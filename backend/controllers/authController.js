@@ -7,10 +7,13 @@ const nodemailer = require("nodemailer");
 const transporter = nodemailer.createTransport({
   service: "gmail",
   auth: {
-    user: process.env.EMAIL_USER, 
+    user: process.env.EMAIL_USER,
     pass: process.env.EMAIL_PASS,
   },
 });
+
+// front-end url for redirects; set via env or default to localhost:5173 (Vite)
+const FRONTEND_URL = process.env.FRONTEND_URL || "http://localhost:5173";
 
 // --- Helper: Validation Functions ---
 const validateEmail = (email) => {
@@ -20,7 +23,8 @@ const validateEmail = (email) => {
 
 const validatePassword = (password) => {
   // At least 8 characters, 1 uppercase, 1 number, 1 special character
-  const passwordRegex = /^(?=.*[A-Z])(?=.*\d)(?=.*[@$!%*?&])[A-Za-z\d@$!%*?&]{8,}$/;
+  const passwordRegex =
+    /^(?=.*[A-Z])(?=.*\d)(?=.*[@$!%*?&])[A-Za-z\d@$!%*?&]{8,}$/;
   return passwordRegex.test(password);
 };
 
@@ -30,7 +34,9 @@ const generateAccessToken = (userId) => {
 };
 
 const generateRefreshToken = (userId) => {
-  return jwt.sign({ id: userId }, process.env.JWT_REFRESH_SECRET, { expiresIn: "7d" });
+  return jwt.sign({ id: userId }, process.env.JWT_REFRESH_SECRET, {
+    expiresIn: "7d",
+  });
 };
 
 exports.signup = async (req, res) => {
@@ -47,8 +53,9 @@ exports.signup = async (req, res) => {
     }
 
     if (!validatePassword(password)) {
-      return res.status(400).json({ 
-        message: "Password must be at least 8 characters with 1 uppercase, 1 number, and 1 special character (@$!%*?&)" 
+      return res.status(400).json({
+        message:
+          "Password must be at least 8 characters with 1 uppercase, 1 number, and 1 special character (@$!%*?&)",
       });
     }
 
@@ -60,13 +67,13 @@ exports.signup = async (req, res) => {
     // Generate a random verification token
     const verificationToken = crypto.randomBytes(32).toString("hex");
 
-    const user = new User({ 
-      name, 
-      email, 
-      password, 
-      verificationToken 
+    const user = new User({
+      name,
+      email,
+      password,
+      verificationToken,
     });
-    
+
     await user.save();
 
     // Send verification email
@@ -77,7 +84,11 @@ exports.signup = async (req, res) => {
       html: `Click <a href="${url}">here</a> to verify your account.`,
     });
 
-    res.status(201).json({ message: "Registered! Please check your email to verify account." });
+    res
+      .status(201)
+      .json({
+        message: "Registered! Please check your email to verify account.",
+      });
   } catch (error) {
     res.status(500).json({ error: error.message });
   }
@@ -86,15 +97,176 @@ exports.signup = async (req, res) => {
 exports.verifyEmail = async (req, res) => {
   try {
     const user = await User.findOne({ verificationToken: req.params.token });
-    if (!user) return res.status(400).json({ message: "Invalid or expired token" });
+
+    if (!user) {
+      return res.send(`
+        <!DOCTYPE html>
+        <html>
+        <head>
+          <title>Email Verification</title>
+          <style>
+            body {
+              margin: 0;
+              padding: 0;
+              background-color: #171717;
+              font-family: Arial, sans-serif;
+              display: flex;
+              justify-content: center;
+              align-items: center;
+              height: 100vh;
+            }
+
+            .container {
+              background-color: #1f1f1f;
+              padding: 40px;
+              border-radius: 16px;
+              width: 100%;
+              max-width: 400px;
+              text-align: center;
+              box-shadow: 0 10px 25px rgba(0, 0, 0, 0.5);
+            }
+
+            h2 {
+              color: #ef4444;
+              margin-bottom: 20px;
+            }
+
+            p {
+              color: #ccc;
+              font-size: 14px;
+              margin-bottom: 20px;
+            }
+
+            .button {
+              display: inline-block;
+              padding: 12px 20px;
+              background-color: #2865de;
+              color: white;
+              border-radius: 8px;
+              text-decoration: none;
+              font-weight: 600;
+              transition: background-color 0.3s ease;
+            }
+
+            .button:hover {
+              background-color: #1f4fb8;
+            }
+          </style>
+        </head>
+        <body>
+          <div class="container">
+            <h2>Verification Failed ❌</h2>
+            <p>Invalid or expired verification link, you can close this tab now.</p>
+          </div>
+        </body>
+        </html>
+      `);
+    }
 
     user.isVerified = true;
-    user.verificationToken = undefined; // Clear token after use
+    user.verificationToken = undefined;
     await user.save();
 
-    res.json({ message: "Email verified successfully. You can now login." });
+    return res.send(`
+      <!DOCTYPE html>
+      <html>
+      <head>
+        <title>Email Verified</title>
+        <style>
+          body {
+            margin: 0;
+            padding: 0;
+            background-color: #171717;
+            font-family: Arial, sans-serif;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            height: 100vh;
+          }
+
+          .container {
+            background-color: #1f1f1f;
+            padding: 40px;
+            border-radius: 16px;
+            width: 100%;
+            max-width: 400px;
+            text-align: center;
+            box-shadow: 0 10px 25px rgba(0, 0, 0, 0.5);
+          }
+
+          h2 {
+            color: #4ade80;
+            margin-bottom: 20px;
+          }
+
+          p {
+            color: #ccc;
+            font-size: 14px;
+            margin-bottom: 20px;
+          }
+
+          .button {
+            display: inline-block;
+            padding: 12px 20px;
+            background-color: #2865de;
+            color: white;
+            border-radius: 8px;
+            text-decoration: none;
+            font-weight: 600;
+            transition: background-color 0.3s ease;
+          }
+
+          .button:hover {
+            background-color: #1f4fb8;
+          }
+        </style>
+      </head>
+      <body>
+        <div class="container">
+          <h2>Email Verified Successfully ✅</h2>
+          <p>Your email has been verified.</p>
+          <p>You can now login to your account, This tab can now be closed.</p>
+        </div>
+      </body>
+      </html>
+    `);
+
   } catch (error) {
-    res.status(500).json({ error: "Server error" });
+    return res.send(`
+      <!DOCTYPE html>
+      <html>
+      <head>
+        <title>Verification Error</title>
+        <style>
+          body {
+            margin: 0;
+            padding: 0;
+            background-color: #171717;
+            font-family: Arial, sans-serif;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            height: 100vh;
+          }
+          .container {
+            background-color: #1f1f1f;
+            padding: 40px;
+            border-radius: 16px;
+            text-align: center;
+            box-shadow: 0 10px 25px rgba(0, 0, 0, 0.5);
+          }
+          h2 { color: #ef4444; }
+          p { color: #ccc; }
+        </style>
+      </head>
+      <body>
+        <div class="container">
+          <h2>Server Error ❌</h2>
+          <p>Something went wrong. Please try again later.</p>
+        </div>
+      </body>
+      </html>
+    `);
   }
 };
 
@@ -104,7 +276,9 @@ exports.signin = async (req, res) => {
 
     // Input validation
     if (!email || !password) {
-      return res.status(400).json({ message: "Email and password are required" });
+      return res
+        .status(400)
+        .json({ message: "Email and password are required" });
     }
 
     const user = await User.findOne({ email });
@@ -115,7 +289,9 @@ exports.signin = async (req, res) => {
 
     // Check if user verified their email
     if (!user.isVerified) {
-      return res.status(401).json({ message: "Please verify your email first" });
+      return res
+        .status(401)
+        .json({ message: "Please verify your email first" });
     }
 
     // Generate tokens
@@ -126,14 +302,14 @@ exports.signin = async (req, res) => {
     user.refreshToken = refreshToken;
     await user.save();
 
-    res.json({ 
-      accessToken, 
+    res.json({
+      accessToken,
       refreshToken,
       user: {
         id: user._id,
         name: user.name,
-        email: user.email
-      }
+        email: user.email,
+      },
     });
   } catch (error) {
     res.status(500).json({ error: "Server error" });
@@ -143,7 +319,7 @@ exports.signin = async (req, res) => {
 exports.logout = async (req, res) => {
   try {
     const user = await User.findById(req.user.id);
-    
+
     // Blacklist the refresh token by clearing it from database
     user.refreshToken = null;
     // Add current token to blacklist (store access tokens that are revoked)
@@ -151,7 +327,7 @@ exports.logout = async (req, res) => {
       user.tokenBlacklist = [];
     }
     user.tokenBlacklist.push(req.headers.authorization.split(" ")[1]);
-    
+
     await user.save();
 
     res.json({ message: "Logged out successfully" });
@@ -197,23 +373,94 @@ exports.showResetPasswordForm = async (req, res) => {
     // Send an HTML form where user can enter their new password
     const html = `
       <!DOCTYPE html>
-      <html>
+        <html>
         <head>
           <title>Reset Password</title>
           <style>
-            body { font-family: Arial, sans-serif; margin: 50px; }
-            form { max-width: 400px; }
-            input { width: 100%; padding: 8px; margin: 10px 0; font-size: 14px; }
-            button { width: 100%; padding: 10px; background: #007bff; color: white; border: none; border-radius: 4px; cursor: pointer; font-size: 16px; }
-            button:hover { background: #0056b3; }
+            body {
+              margin: 0;
+              padding: 0;
+              background-color: #171717;
+              font-family: Arial, sans-serif;
+              display: flex;
+              justify-content: center;
+              align-items: center;
+              height: 100vh;
+            }
+
+            .container {
+              background-color: #1f1f1f;
+              padding: 40px;
+              border-radius: 16px;
+              width: 100%;
+              max-width: 400px;
+              box-shadow: 0 10px 25px rgba(0, 0, 0, 0.5);
+            }
+
+            h2 {
+              text-align: center;
+              color: white;
+              margin-bottom: 20px;
+            }
+
+            p {
+              text-align: center;
+              color: #aaa;
+              font-size: 14px;
+              margin-bottom: 20px;
+            }
+
+            input {
+              width: 100%;
+              padding: 12px;
+              margin: 10px 0;
+              border-radius: 8px;
+              border: 1px solid #444;
+              background-color: #242424;
+              color: white;
+              font-size: 14px;
+              outline: none;
+            }
+
+            input:focus {
+              border-color: #2865de;
+            }
+
+            button {
+              width: 100%;
+              padding: 12px;
+              margin-top: 15px;
+              background-color: #2865de;
+              color: white;
+              border: none;
+              border-radius: 8px;
+              font-size: 15px;
+              font-weight: 600;
+              cursor: pointer;
+              transition: background-color 0.3s ease;
+            }
+
+            button:hover {
+              background-color: #1f4fb8;
+            }
           </style>
         </head>
+
         <body>
-          <h2>Reset Your Password</h2>
-          <form method="POST" action="/api/auth/reset-password/${req.params.token}">
-            <input type="password" name="password" placeholder="Enter new password" required />
-            <button type="submit">Reset Password</button>
-          </form>
+          <div class="container">
+            <h2>Reset Your Password</h2>
+            <p>Enter your new password below</p>
+
+            <form method="POST" action="/api/auth/reset-password/${req.params.token}">
+              <input 
+                type="password" 
+                name="password" 
+                placeholder="Enter new password" 
+                required 
+              />
+              <button type="submit">Reset Password</button>
+            </form>
+          </div>
         </body>
       </html>
     `;
@@ -230,14 +477,77 @@ exports.resetPassword = async (req, res) => {
       resetPasswordExpires: { $gt: Date.now() }, // Check if token is still valid
     });
 
-    if (!user) return res.status(400).json({ message: "Invalid or expired token" });
+    if (!user)
+      return res.status(400).json({ message: "Invalid or expired token" });
 
     user.password = req.body.password; // The pre-save hook in User.js will hash this
     user.resetPasswordToken = undefined;
     user.resetPasswordExpires = undefined;
     await user.save();
 
-    res.json({ message: "Password reset successful" });
+    res.send(`
+      <!DOCTYPE html>
+      <html>
+      <head>
+        <title>Password Reset Successful</title>
+        <style>
+          body {
+            margin: 0;
+            padding: 0;
+            background-color: #171717;
+            font-family: Arial, sans-serif;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            height: 100vh;
+          }
+
+          .container {
+            background-color: #1f1f1f;
+            padding: 40px;
+            border-radius: 16px;
+            width: 100%;
+            max-width: 400px;
+            text-align: center;
+            box-shadow: 0 10px 25px rgba(0, 0, 0, 0.5);
+          }
+
+          h2 {
+            color: #4ade80;
+            margin-bottom: 20px;
+          }
+
+          p {
+            color: #ccc;
+            font-size: 14px;
+            margin-bottom: 20px;
+          }
+
+          .button {
+            display: inline-block;
+            padding: 12px 20px;
+            background-color: #2865de;
+            color: white;
+            border-radius: 8px;
+            text-decoration: none;
+            font-weight: 600;
+            transition: background-color 0.3s ease;
+          }
+
+          .button:hover {
+            background-color: #1f4fb8;
+          }
+        </style>
+      </head>
+      <body>
+        <div class="container">
+          <h2>Password Reset Successful ✅</h2>
+          <p>Your password has been updated successfully.</p>
+          <p>You can now close this tab and log in with your new password.</p>
+        </div>
+      </body>
+      </html>
+    `);
   } catch (error) {
     res.status(500).json({ error: "Server error" });
   }
@@ -246,7 +556,9 @@ exports.resetPassword = async (req, res) => {
 // Get current user profile (requires authentication)
 exports.getCurrentUser = async (req, res) => {
   try {
-    const user = await User.findById(req.user.id).select("-password -refreshToken");
+    const user = await User.findById(req.user.id).select(
+      "-password -refreshToken",
+    );
     if (!user) {
       return res.status(404).json({ message: "User not found" });
     }
@@ -263,12 +575,15 @@ exports.changePassword = async (req, res) => {
 
     // Input validation
     if (!currentPassword || !newPassword) {
-      return res.status(400).json({ message: "Current and new password are required" });
+      return res
+        .status(400)
+        .json({ message: "Current and new password are required" });
     }
 
     if (!validatePassword(newPassword)) {
-      return res.status(400).json({ 
-        message: "Password must be at least 8 characters with 1 uppercase, 1 number, and 1 special character (@$!%*?&)" 
+      return res.status(400).json({
+        message:
+          "Password must be at least 8 characters with 1 uppercase, 1 number, and 1 special character (@$!%*?&)",
       });
     }
 
@@ -399,13 +714,16 @@ exports.updateProfile = async (req, res) => {
 
     await user.save();
 
-    res.json({ 
-      message: email && email !== user.email ? "Profile updated. Please verify your new email." : "Profile updated successfully",
+    res.json({
+      message:
+        email && email !== user.email
+          ? "Profile updated. Please verify your new email."
+          : "Profile updated successfully",
       user: {
         id: user._id,
         name: user.name,
-        email: user.email
-      }
+        email: user.email,
+      },
     });
   } catch (error) {
     res.status(500).json({ error: "Server error" });
@@ -418,7 +736,9 @@ exports.deleteAccount = async (req, res) => {
     const { password } = req.body;
 
     if (!password) {
-      return res.status(400).json({ message: "Password is required to delete account" });
+      return res
+        .status(400)
+        .json({ message: "Password is required to delete account" });
     }
 
     const user = await User.findById(req.user.id);
@@ -430,7 +750,9 @@ exports.deleteAccount = async (req, res) => {
     // Verify password before deletion
     const isPasswordCorrect = await user.comparePassword(password);
     if (!isPasswordCorrect) {
-      return res.status(401).json({ message: "Incorrect password. Account not deleted." });
+      return res
+        .status(401)
+        .json({ message: "Incorrect password. Account not deleted." });
     }
 
     // Delete user
