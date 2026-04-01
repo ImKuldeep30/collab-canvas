@@ -18,6 +18,7 @@ const App = () => {
           element={
             <ProtectedRoute>
               <Home />
+              
             </ProtectedRoute>
           } 
         />
