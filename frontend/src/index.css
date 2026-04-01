@@ -1,2 +1,54 @@
 @import "tailwindcss";
 
+/* This targets the Library button and the "More" dropdown specifically */
+.library-button, 
+.layer-ui__wrapper .sidebar-trigger,
+.App-toolbar-content .dropdown-menu-trigger {
+    display: none !important;
+}
+
+/* 1. Target by the specific internal class used for the dropdown trigger */
+.excalidraw .dropdown-menu-trigger,
+.excalidraw .stack-container-button {
+  display: none !important;
+}
+
+/* 2. Target by the title/aria-label which is consistently 'More tools' */
+.excalidraw button[title^="More tools"],
+.excalidraw button[aria-label^="More tools"] {
+  display: none !important;
+}
+
+/* 3. The 'Laser' selector: targets the last child of the toolbar center-stack 
+   if the above fail */
+.App-toolbar-content .Stack.Stack_horizontal > div:last-child {
+  display: none !important;
+}
+
+/* Hides the Help button (?) in the bottom right */
+.excalidraw .help-icon, 
+.excalidraw .layer-ui__wrapper__footer-right button:last-child {
+  display: none !important;
+}
+
+/* 1. Target the vertical container on the right edge */
+.excalidraw .layer-ui__wrapper .sidebar-triggers,
+.excalidraw .layer-ui__wrapper .Stack_vertical.sidebar-triggers {
+  display: none !important;
+  visibility: hidden !important;
+  width: 0 !important;
+  pointer-events: none !important;
+}
+
+/* 2. Target the specific buttons inside that bar just in case */
+.excalidraw button[aria-label*="Library"],
+.excalidraw button[aria-label*="sidebar"],
+.excalidraw .sidebar-trigger {
+  display: none !important;
+}
+
+/* 3. Hide the entire right-side UI wrapper if needed */
+.excalidraw .layer-ui__wrapper__footer-right {
+  /* Only use this if you want to hide the help icon too */
+  display: none !important;
+}
