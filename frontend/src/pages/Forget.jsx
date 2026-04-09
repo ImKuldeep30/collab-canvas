@@ -13,7 +13,7 @@ const Forget = () => {
   const submitHandler = async (e) => {
     e.preventDefault();
     if (isSubmitted) return;
-    const BACKEND_URL = "http://localhost:3000/api/auth/forgot-password";
+    const BACKEND_URL = "http://192.168.1.10:3000/api/auth/forgot-password";
     console.log(email);
     setLoading(true);
     try {
@@ -114,3 +114,4 @@ const Forget = () => {
 };
 
 export default Forget;
+

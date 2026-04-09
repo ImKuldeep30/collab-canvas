@@ -16,7 +16,7 @@ const Register = () => {
 
   const submitHandler = async (e) => {
     e.preventDefault()
-    const BACKEND_URL = 'http://localhost:3000/api/auth/register';
+    const BACKEND_URL = 'http://192.168.1.10:3000/api/auth/register';
     console.log(Name)
     console.log(email)
     console.log(password)

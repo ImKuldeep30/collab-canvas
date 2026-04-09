@@ -15,7 +15,7 @@ const transporter = nodemailer.createTransport({
 // front-end url for redirects; set via env or default to localhost:5173 (Vite)
 const FRONTEND_URL = process.env.FRONTEND_URL || "http://localhost:5173";
 
-// --- Helper: Validation Functions ---
+//  Validation Functions 
 const validateEmail = (email) => {
   const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
   return emailRegex.test(email);
@@ -28,7 +28,7 @@ const validatePassword = (password) => {
   return passwordRegex.test(password);
 };
 
-// --- Helper: Generate Tokens ---
+//  Generate Tokens 
 const generateAccessToken = (userId) => {
   return jwt.sign({ id: userId }, process.env.JWT_SECRET, { expiresIn: "15m" });
 };

@@ -27,7 +27,7 @@ const ChangePasswordModal = ({ isOpen, onClose }) => {
 
     try {
       const token = localStorage.getItem("accessToken");
-      const res = await fetch("http://localhost:3000/api/auth/change-password", {
+      const res = await fetch("http://192.168.1.10:3000/api/auth/change-password", {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
@@ -137,3 +137,4 @@ const ChangePasswordModal = ({ isOpen, onClose }) => {
 };
 
 export default ChangePasswordModal;
+
