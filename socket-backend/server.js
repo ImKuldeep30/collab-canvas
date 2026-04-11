@@ -20,7 +20,8 @@ const io = new Server(server, {
 // sessions[sessionId] = { 
 //   admin: socketId,
 //   users: Map(socketId => { username, canDraw }),
-//   password: password_string (optional) 
+//   password: password_string (optional),
+//   chatEnabled: boolean
 // }
 const sessions = new Map();
 
@@ -39,7 +40,8 @@ io.on("connection", (socket) => {
     sessions.set(sessionId, { 
       admin: socket.id,
       users: usersMap, 
-      password 
+      password,
+      chatEnabled: true
     });
     console.log(`Session ${sessionId} created by ${socket.id} (Admin)`);
     if (callback) callback({ sessionId });
@@ -117,9 +119,9 @@ io.on("connection", (socket) => {
     if (session && session.users.has(socket.id)) {
        const isAdmin = session.admin === socket.id;
        const myPermission = session.users.get(socket.id).canDraw;
-       if (callback) callback({ users: Array.from(session.users.entries()), isAdmin, canDraw: myPermission });
+       if (callback) callback({ users: Array.from(session.users.entries()), isAdmin, canDraw: myPermission, chatEnabled: session.chatEnabled });
     } else {
-       if (callback) callback({ users: [], isAdmin: false, canDraw: false });
+       if (callback) callback({ users: [], isAdmin: false, canDraw: false, chatEnabled: true });
     }
   });
 
@@ -196,6 +198,45 @@ io.on("connection", (socket) => {
     }
   });
 
+  // Admin toggles chat
+  socket.on("toggle-chat", (data) => {
+    const { sessionId, e: enabled } = data;
+    const session = sessions.get(sessionId);
+    if (session && session.admin === socket.id) {
+      session.chatEnabled = enabled;
+      io.to(sessionId).emit("chat-status-updated", { enabled });
+    }
+  });
+
+  // Admin clears chats
+  socket.on("clear-chats", (data) => {
+    const sessionId = typeof data === 'string' ? data : data.sessionId;
+    const session = sessions.get(sessionId);
+    if (session && session.admin === socket.id) {
+      io.to(sessionId).emit("chats-cleared");
+    }
+  });
+
+  // Chat capability
+  socket.on("send-chat", (data) => {
+    const { sessionId, message } = data;
+    const session = sessions.get(sessionId);
+    if (session && session.users.has(socket.id)) {
+      // Check if chat is enabled or if user is admin
+      if (!session.chatEnabled && session.admin !== socket.id) {
+        return; // Reject chat if disabled and not admin
+      }
+      
+      const senderName = session.users.get(socket.id).username;
+      io.to(sessionId).emit("receive-chat", {
+        socketId: socket.id,
+        username: senderName,
+        message: message,
+        timestamp: new Date().toISOString()
+      });
+    }
+  });
+
   socket.on("disconnect", () => {
     console.log("User disconnected:", socket.id);
     sessions.forEach((session, sessionId) => {
@@ -221,3 +262,4 @@ const PORT = 4000;
 server.listen(PORT, () => {
   console.log(`Socket server running on port ${PORT}`);
 });
+ 

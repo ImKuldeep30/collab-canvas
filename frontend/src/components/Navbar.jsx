@@ -1,17 +1,18 @@
 import React, { useState, useEffect, useRef } from 'react'
-import { User, Settings, LogOut, Mail, CheckCircle2, XCircle, Key, UserCog, Palette, Bell, ChevronRight, Users } from 'lucide-react';
+import { User, Settings, LogOut, Mail, CheckCircle2, XCircle, Key, UserCog, Palette, Bell, ChevronRight, Users, X } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import UpdateProfileModal from './UpdateProfileModal';
 import ChangePasswordModal from './ChangePasswordModal';
 import CreateSessionModal from './CreateSessionModal';
 import JoinSessionModal from './JoinSessionModal';
-import ParticipantsPanel from './ParticipantsPanel';
+import AlertModal from './AlertModal';
 
-const Navbar = ({ socket, sessionId, setSessionId, isAdmin }) => {
+const Navbar = ({ socket, sessionId, setSessionId, isAdmin, onToggleParticipants, joinRequestsCount }) => {
   const [isProfileOpen, setIsProfileOpen] = useState(false);
   const [isSettingsOpen, setIsSettingsOpen] = useState(false);
   const [isUpdateProfileModalOpen, setIsUpdateProfileModalOpen] = useState(false);
   const [isChangePasswordModalOpen, setIsChangePasswordModalOpen] = useState(false);
+  const [isConfirmEndSessionOpen, setIsConfirmEndSessionOpen] = useState(false);
   
   const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
   const [isJoinModalOpen, setIsJoinModalOpen] = useState(false);
@@ -143,6 +144,15 @@ const Navbar = ({ socket, sessionId, setSessionId, isAdmin }) => {
     setIsJoinModalOpen(true);
   };
 
+  const terminateSession = () => {
+    setIsConfirmEndSessionOpen(true);
+  };
+
+  const handleConfirmTerminate = () => {
+    socket.emit("terminate-session", sessionId);
+    setIsConfirmEndSessionOpen(false);
+  };
+
   return (
     <>
     <div className="h-12 w-[95%] max-w-5xl m-2 text-white flex px-4 justify-between rounded-2xl border-3 border-white/20 bg-[#171717]">
@@ -171,15 +181,31 @@ const Navbar = ({ socket, sessionId, setSessionId, isAdmin }) => {
                 </button>
                 {sessionId && (
                   <div className="flex items-center gap-3">
-                    <span className="text-emerald-400 text-sm font-medium flex items-center gap-1 bg-white/5 py-1 px-2 rounded-lg border border-white/10">
-                      <CheckCircle2 size={14} /> ID: {sessionId}
-                    </span>
-                    <ParticipantsPanel socket={socket} sessionId={sessionId} isAdmin={isAdmin} />
+                    <button 
+                      onClick={onToggleParticipants}
+                      className="text-gray-400 hover:text-white transition-colors duration-200 relative group p-2 rounded-lg hover:bg-white/10 flex items-center justify-center"
+                      title="Participants"
+                    >
+                      <Users size={18} />
+                      {joinRequestsCount > 0 && isAdmin && (
+                        <span className="absolute top-0 right-0 w-2.5 h-2.5 bg-red-500 rounded-full animate-pulse border border-[#171717]"></span>
+                      )}
+                    </button>
                   </div>
                 )}
             </div>
                 
             <div className="flex items-center gap-2 md:gap-10">
+                {sessionId && isAdmin && (
+                  <button
+                    onClick={terminateSession}
+                    className="text-red-400 hover:text-white hover:bg-red-600/80 transition-all duration-200 group p-1.5 rounded-lg flex items-center justify-center gap-1 border border-red-500/20 hover:border-transparent"
+                    title="End Session for All"
+                  >
+                    <X size={16} />
+                    <span className="text-xs font-medium">End Session</span>
+                  </button>
+                )}
                 <div className="relative" ref={profileRef}>
                     <button 
                         onClick={() => setIsProfileOpen(!isProfileOpen)}
@@ -339,6 +365,15 @@ const Navbar = ({ socket, sessionId, setSessionId, isAdmin }) => {
                 onClose={() => setIsJoinModalOpen(false)}
                 socket={socket}
                 setSessionId={setSessionId}
+            />
+
+            <AlertModal
+                isOpen={isConfirmEndSessionOpen}
+                title="End Session"
+                message="Are you sure you want to end this session? Everyone will be kicked out."
+                type="confirm"
+                onConfirm={handleConfirmTerminate}
+                onClose={() => setIsConfirmEndSessionOpen(false)}
             />
 
         </div>

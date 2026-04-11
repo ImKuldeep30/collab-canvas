@@ -1,10 +1,8 @@
 import React, { useState, useEffect } from 'react';
 import { Users, Shield, UserX, X, ShieldX, UserCheck, ShieldClose } from 'lucide-react';
 
-const ParticipantsPanel = ({ socket, sessionId, isAdmin }) => {
-  const [isOpen, setIsOpen] = useState(false);
+const ParticipantsPanel = ({ socket, sessionId, isAdmin, joinRequests, setJoinRequests, onClose }) => {
   const [users, setUsers] = useState([]);
-  const [joinRequests, setJoinRequests] = useState([]);
 
   useEffect(() => {
     if (!socket || !sessionId) return;
@@ -20,16 +18,10 @@ const ParticipantsPanel = ({ socket, sessionId, isAdmin }) => {
       setUsers(updatedUsers);
     };
 
-    const handleJoinRequest = (requestData) => {
-      setJoinRequests((prev) => [...prev, requestData]);
-    };
-
     socket.on("session-users-update", handleUsersUpdate);
-    socket.on("join-request-received", handleJoinRequest);
 
     return () => {
       socket.off("session-users-update", handleUsersUpdate);
-      socket.off("join-request-received", handleJoinRequest);
     };
   }, [socket, sessionId]);
 
@@ -53,39 +45,22 @@ const ParticipantsPanel = ({ socket, sessionId, isAdmin }) => {
     }
   };
 
-  const terminateSession = () => {
-    if(window.confirm("Terminate the entire session? This will kick everyone out.")) {
-       socket.emit("terminate-session", sessionId);
-    }
-  };
-
   if (!sessionId) return null;
 
   return (
-    <div className="relative">
-      <button 
-        onClick={() => setIsOpen(!isOpen)}
-        className="text-gray-400 hover:text-white transition-colors duration-200 relative group p-2 rounded-lg hover:bg-white/10 flex items-center justify-center"
-      >
-        <Users size={18} />
-        {joinRequests.length > 0 && isAdmin && (
-          <span className="absolute top-0 right-0 w-2.5 h-2.5 bg-red-500 rounded-full animate-pulse border border-[#171717]"></span>
-        )}
-      </button>
+    <div className="flex flex-col h-full bg-[#1e1e1e] text-white w-full">
+      <div className="p-4 flex flex-col h-full">
+        <div className="flex items-center justify-between border-b border-white/10 pb-3 mb-3 shrink-0">
+          <h3 className="text-white font-semibold flex items-center gap-2">
+            <Users size={18} className="text-indigo-400"/> Participants 
+            <span className="text-xs bg-white/10 px-2 py-0.5 rounded-full">{users.length}</span>
+          </h3>
+          <button onClick={onClose} className="text-gray-400 hover:text-white p-1 rounded-md hover:bg-white/10 transition-colors">
+            <X size={18} />
+          </button>
+        </div>
 
-      {isOpen && (
-        <div className="absolute right-0 mt-3 w-80 bg-[#1f1f1f] rounded-2xl border-2 border-white/10 shadow-2xl p-4 flex flex-col z-50 transform origin-top-right transition-all">
-          <div className="flex items-center justify-between border-b border-white/10 pb-3 mb-3">
-            <h3 className="text-white font-semibold flex items-center gap-2">
-              <Users size={18} className="text-indigo-400"/> Participants 
-              <span className="text-xs bg-white/10 px-2 py-0.5 rounded-full">{users.length}</span>
-            </h3>
-            <button onClick={() => setIsOpen(false)} className="text-gray-400 hover:text-white">
-              <X size={18} />
-            </button>
-          </div>
-
-          <div className="flex-1 overflow-y-auto max-h-64 space-y-4">
+          <div className="flex-1 overflow-y-auto space-y-4 pr-1 scrollbar-thin scrollbar-thumb-white/10 scrollbar-track-transparent">
             {/* Join Requests (Admin Only) */}
             {isAdmin && joinRequests.length > 0 && (
               <div className="bg-orange-500/10 border border-orange-500/20 rounded-xl p-3 mb-2">
@@ -145,22 +120,8 @@ const ParticipantsPanel = ({ socket, sessionId, isAdmin }) => {
                })}
             </div>
           </div>
-
-          {/* Admin Terminate Session */}
-          {isAdmin && (
-            <div className="mt-4 pt-3 border-t border-white/10">
-              <button 
-                onClick={terminateSession}
-                className="w-full flex items-center justify-center gap-2 py-2 bg-red-600/20 text-red-400 hover:bg-red-600 hover:text-white rounded-xl transition-all font-medium text-sm border border-red-600/30"
-              >
-                <X size={16} /> End Session for All
-              </button>
-            </div>
-          )}
-
         </div>
-      )}
-    </div>
+      </div>
   );
 };
 
