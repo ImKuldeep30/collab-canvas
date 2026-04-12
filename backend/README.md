@@ -1,31 +1,33 @@
-# Canvas Backend Server
+# Canvas Collaboration App - Unified Backend
 
-A production-ready authentication and user management backend API built with **Node.js, Express, MongoDB, and JWT**.
+A production-ready server that serves **both** a comprehensive REST API and a real-time WebSocket backend simultaneously on a single port. Built with **Node.js, Express, Socket.io, MongoDB, and JWT**.
 
 ---
 
-## 🚀 Overview
+## 🚀 Overview & Architecture
 
-This server provides a complete authentication system with user registration, email verification, password management, and protected endpoints. It implements industry best practices including:
+To keep hosting simple and affordable, the original authentication API and real-time socket server have been **merged** into this unified backend. 
 
-- ✅ JWT-based authentication (Access & Refresh tokens)
-- ✅ Email verification with nodemailer
-- ✅ Password reset functionality
-- ✅ Input validation & strong password requirements
-- ✅ Rate limiting on sensitive endpoints
-- ✅ Token blacklisting on logout
-- ✅ Protected routes with middleware authentication
+### 1. The REST API (Express)
+Handles all stateless interactions:
+- **Authentication**: JWT-based login, registration with email verification (nodemailer), password resets, and user management (`/api/auth/*`).
+- **Team Management**: Creating teams, managing team members, and accepting join requests (`/api/teams/*`).
+
+### 2. The Real-Time Server (Socket.io)
+Handles the live collaborative features of the canvas application:
+- **Live Canvas Drawing**: High-frequency coordinate broadcasting to team members in a specific session room.
+- **Persistent Chat**: Live messaging parallel to drawing sessions.
+- **Team Invites (Live Notifications)**: An admin can dispatch immediate "Session Started" prompts directly into team members' clients via `user_room` socket channels.
 
 ---
 
 ## 📋 Table of Contents
 
-1. [Installation](#installation)
+1. [Installation & Setup](#installation)
 2. [Environment Setup](#environment-setup)
-3. [Features](#features)
-4. [API Endpoints](#api-endpoints)
-5. [Authentication Flow](#authentication-flow)
-6. [Project Structure](#project-structure)
+3. [REST API Features Sandbox](#rest-api)
+4. [WebSocket (Real-Time) Features Sandbox](#websocket-events)
+5. [Project Structure](#project-structure)
 
 ---
 
@@ -34,21 +36,21 @@ This server provides a complete authentication system with user registration, em
 ### Prerequisites
 - Node.js (v14+)
 - MongoDB (local or MongoDB Atlas)
-- Gmail account (for email verification)
+- Gmail account (for email verification emails)
 
-### Steps
+### Standard Local Run
 
-1. **Clone and navigate to backend**
+1. **Navigate to the backend directory**
    ```bash
    cd canvas/backend
    ```
 
-2. **Install dependencies**
+2. **Install all dependencies**
    ```bash
    npm install
    ```
 
-3. **Create `.env` file** in the root directory
+3. **Create the `.env` file** in the root directory
    ```env
    JWT_SECRET=your-secret-key-here
    JWT_REFRESH_SECRET=your-refresh-secret-key-here
@@ -61,162 +63,44 @@ This server provides a complete authentication system with user registration, em
    ```bash
    node server.js
    ```
+   The unified server will run on `http://localhost:3000`.
 
-   The server will run on `http://localhost:3000`
-
----
-
-## 📝 Environment Setup
-
-### Required Environment Variables
-
-| Variable | Description | Example |
-|----------|-------------|---------|
-| `JWT_SECRET` | Secret key for access token signing | `mysecret123` |
-| `JWT_REFRESH_SECRET` | Secret key for refresh token signing | `myrefreshsecret123` |
-| `EMAIL_USER` | Gmail address for sending emails | `your.email@gmail.com` |
-| `EMAIL_PASS` | Gmail app password (not your normal password) | `xxxx xxxx xxxx xxxx` |
-| `MONGODB_URI` | MongoDB connection string | `mongodb://localhost:27017/canvas` |
-
-### Gmail App Password Setup
-
-1. Enable 2-factor authentication on your Gmail account
-2. Go to [Google Account Security](https://myaccount.google.com/security)
-3. Find "App passwords" and generate one for this application
-4. Copy the 16-character password to `.env` as `EMAIL_PASS`
+### Docker Run
+A `Dockerfile` is included for rapid deployment.
+1. Build it: `docker build -t mybackend .`
+2. Run it: `docker run -d -p 3000:3000 --name authserver mybackend`
 
 ---
 
-## ✨ Features
+## 📡 REST API Structure
 
-### 1. User Registration & Email Verification
-- Sign up with name, email, and password
-- Password strength validation (8+ chars, 1 uppercase, 1 number, 1 special char)
-- Email verification token sent to user's inbox
-- User cannot login until email is verified
+Base URL: `http://localhost:3000/api`
 
-### 2. Authentication & Tokens
-- **Access Token** (15 minutes): Used for API requests
-- **Refresh Token** (7 days): Used to get new access tokens
-- Automatic token refresh without re-login
-
-### 3. Password Management
-- **Password Reset**: Via email link with 1-hour expiration
-- **Change Password**: For authenticated users
-- All passwords are hashed with bcrypt
-
-### 4. Protected Routes
-- Middleware-based authentication
-- User data attached to requests
-- Token blacklist checking
-
-### 5. Rate Limiting
-- Signup: 5 requests per 15 minutes
-- Login: 10 requests per 15 minutes
-- Forgot Password: 5 requests per hour
-
-### 6. Security Features
-- Input validation on all fields
-- Email format validation
-- Password strength requirements
-- Token blacklisting on logout
-- Secure password comparison
-
-### 7. User Management
-- View current user profile
-- Update name and/or email
-- Delete account (with password confirmation)
-- Resend verification emails
+- **Auth Endpoints (`/api/auth/`)**:
+  - `POST /register`: Accepts name, email, password. Validates inputs & shoots an email link.
+  - `POST /login`: Returns an Access Token (15m) & Refresh Token (7d).
+  - `GET /verify-email/:token`: Validates email before allowing login.
+  - `GET /me`: Returns the user details, given the Bearer Token.
+- **Team Endpoints (`/api/teams/`)**:
+  - Used for creating, deleting, and appending members to teams for session invites.
 
 ---
 
-## 📡 API Endpoints
+## 🔌 WebSocket Events Structure
 
-### Base URL
-```
-http://localhost:3000/api/auth
-```
+All socket-based logic resides at the bottom of `server.js` under the `io.on("connection")` block.
 
----
+### Connecting
+- A client attempts `io("http://localhost:3000")`.
+- Once connected, the frontend fires `socket.emit("register-user", userId)` to ensure they occupy a specific user room (`user_room_<userId>`) for private team notifications.
 
-### 1. **Register User**
-| Property | Value |
-|----------|-------|
-| **Endpoint** | `POST /register` |
-| **Authentication** | ❌ Not required |
-| **Rate Limit** | 5 requests per 15 minutes |
+### Session Initialization & Invites
+- **`create-session`**: Triggered by an admin, creates a new unique session lobby in the server's cache (`sessions` Map).
+- **`invite-team-to-session`**: Admin emits this alongside an array of `members`. The server iterates through the members and forcibly pushes a notification into their specific user rooms to inform them the lobby is open.
 
-**Request Body:**
-```json
-{
-  "name": "John Doe",
-  "email": "john@example.com",
-  "password": "Password@123"
-}
-```
-
-**Response (201):**
-```json
-{
-  "message": "Registered! Please check your email to verify account."
-}
-```
-
-**Validation Rules:**
-- All fields required
-- Email must be valid format
-- Password must be 8+ characters with 1 uppercase, 1 number, 1 special char (@$!%*?&)
-
----
-
-### 2. **Verify Email**
-| Property | Value |
-|----------|-------|
-| **Endpoint** | `GET /verify-email/:token` |
-| **Authentication** | ❌ Not required |
-
-**Response (200):**
-```json
-{
-  "message": "Email verified successfully. You can now login."
-}
-```
-
-**Note:** Token is sent in the verification email link. Click the link directly in your email.
-
----
-
-### 3. **Login/Sign In**
-| Property | Value |
-|----------|-------|
-| **Endpoint** | `POST /login` |
-| **Authentication** | ❌ Not required |
-| **Rate Limit** | 10 requests per 15 minutes |
-
-**Request Body:**
-```json
-{
-  "email": "john@example.com",
-  "password": "Password@123"
-}
-```
-
-**Response (200):**
-```json
-{
-  "accessToken": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...",
-  "refreshToken": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...",
-  "user": {
-    "id": "507f1f77bcf86cd799439011",
-    "name": "John Doe",
-    "email": "john@example.com"
-  }
-}
-```
-
-**Requirements:**
-- Email must be verified to login
-- Both accessToken and refreshToken are returned
+### Collaboration Phase
+- **`draw` & `cursor-move`**: High velocity traffic. Receives standard JSON data representing coordinate arrays and instantly shouts it to `socket.to(data.sessionId)`.
+- **`send-chat`**: Shunts incoming chat strings to `receive-chat` for all room inhabitants, verifying permissions set by the admin beforehand.
 
 ---
 
