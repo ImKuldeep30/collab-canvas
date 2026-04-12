@@ -17,14 +17,26 @@ export default function Home() {
   const [chatMessages, setChatMessages] = useState([]);
   const [isChatEnabled, setIsChatEnabled] = useState(true);
   const [alertConfig, setAlertConfig] = useState({ isOpen: false, title: "", message: "" });
+  const [inviteData, setInviteData] = useState(null);
 
   const showAlert = (title, message) => {
     setAlertConfig({ isOpen: true, title, message });
   };
-
   useEffect(() => {
-    const newSocket = io("http://192.168.1.10:4000"); // Socket connection available only after successful login
+    const newSocket = io("http://192.168.1.10:3000"); // Socket connection available only after successful login
     setSocket(newSocket);
+
+    const user = JSON.parse(localStorage.getItem("user") || "{}");
+    if (user && (user.id || user._id)) {
+      newSocket.emit("register-user", user.id || user._id);
+    }
+
+    newSocket.on("team-session-started", (data) => {
+      // Don't notify the admin who started it
+      if(user && user.name !== data.adminName) {
+        setInviteData(data);
+      }
+    });
 
     // Global session events
     newSocket.on("kicked", (data) => {
@@ -65,6 +77,7 @@ export default function Home() {
     });
 
     return () => {
+      newSocket.off("team-session-started");
       newSocket.off("kicked");
       newSocket.off("session-terminated");
       newSocket.off("permission-updated");
@@ -103,6 +116,7 @@ export default function Home() {
           sessionId={sessionId} 
           setSessionId={setSessionId} 
           isAdmin={isAdmin} 
+          setIsAdmin={setIsAdmin}
           onToggleParticipants={() => setIsParticipantsOpen(!isParticipantsOpen)}
           joinRequestsCount={joinRequests.length}
         />
@@ -173,7 +187,51 @@ export default function Home() {
         )}
 
       </div>
-
+      {inviteData && (
+        <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm">
+          <div className="bg-[#1e1e1e] border border-white/10 rounded-2xl w-full max-w-sm shadow-2xl relative flex flex-col p-6 animate-in fade-in zoom-in duration-200">
+            <div className="text-center mb-6">
+              <div className="w-16 h-16 rounded-full bg-indigo-500/20 text-indigo-400 flex items-center justify-center mx-auto mb-4">
+                <svg xmlns="http://www.w3.org/2000/svg" width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                  <polygon points="23 7 16 12 23 17 23 7"></polygon>
+                  <rect x="1" y="5" width="15" height="14" rx="2" ry="2"></rect>
+                </svg>
+              </div>
+              <h3 className="text-xl font-bold text-white mb-2">Team Session Started</h3>
+              <p className="text-gray-400 text-sm">
+                <strong className="text-indigo-400">{inviteData.adminName}</strong> has started a session for <strong className="text-white">{inviteData.teamName}</strong>.
+              </p>
+            </div>
+            <div className="flex gap-3 mt-2">
+              <button
+                onClick={() => setInviteData(null)}
+                className="flex-1 py-2.5 rounded-xl border border-white/10 text-gray-300 hover:bg-white/5 hover:text-white transition-colors font-medium"
+              >
+                Ignore
+              </button>
+              <button
+                onClick={() => {
+                  const user = JSON.parse(localStorage.getItem("user") || "{}");
+                  const username = user.name || "User";
+                    socket.emit("join-team-session", { sessionId: inviteData.sessionId, password: null, username }, (res) => {
+                    if (res && res.success) {
+                      setSessionId(inviteData.sessionId);
+                      setIsAdmin(false);
+                      setCanDraw(res.canDraw);
+                    } else if(res && !res.success) {
+                      showAlert("Error", res.message || "Failed to join team session.");
+                    }
+                  });
+                  setInviteData(null);
+                }}
+                className="flex-1 py-2.5 rounded-xl bg-indigo-600 text-white hover:bg-indigo-500 transition-colors font-medium shadow-lg shadow-indigo-500/20"
+              >
+                Join Now
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
       <AlertModal 
         isOpen={alertConfig.isOpen} 
         title={alertConfig.title} 

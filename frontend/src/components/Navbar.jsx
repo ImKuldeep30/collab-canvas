@@ -4,10 +4,14 @@ import { useNavigate } from 'react-router-dom';
 import UpdateProfileModal from './UpdateProfileModal';
 import ChangePasswordModal from './ChangePasswordModal';
 import CreateSessionModal from './CreateSessionModal';
+import CreateTeamModal from './CreateTeamModal';
+import JoinTeamModal from './JoinTeamModal';
+import MyTeamsModal from './MyTeamsModal';
+import NotificationsModal from './NotificationsModal';
 import JoinSessionModal from './JoinSessionModal';
 import AlertModal from './AlertModal';
 
-const Navbar = ({ socket, sessionId, setSessionId, isAdmin, onToggleParticipants, joinRequestsCount }) => {
+const Navbar = ({ socket, sessionId, setSessionId, isAdmin, setIsAdmin, onToggleParticipants, joinRequestsCount }) => {
   const [isProfileOpen, setIsProfileOpen] = useState(false);
   const [isSettingsOpen, setIsSettingsOpen] = useState(false);
   const [isUpdateProfileModalOpen, setIsUpdateProfileModalOpen] = useState(false);
@@ -16,6 +20,12 @@ const Navbar = ({ socket, sessionId, setSessionId, isAdmin, onToggleParticipants
   
   const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
   const [isJoinModalOpen, setIsJoinModalOpen] = useState(false);
+
+  const [isCreateTeamOpen, setIsCreateTeamOpen] = useState(false);
+  const [isJoinTeamOpen, setIsJoinTeamOpen] = useState(false);
+  const [isMyTeamsOpen, setIsMyTeamsOpen] = useState(false);
+  const [isNotificationsOpen, setIsNotificationsOpen] = useState(false);
+  const [notificationCount, setNotificationCount] = useState(0);
   
   const [user, setUser] = useState(null);
   const [loading, setLoading] = useState(false);
@@ -24,6 +34,25 @@ const Navbar = ({ socket, sessionId, setSessionId, isAdmin, onToggleParticipants
   const settingsRef = useRef(null);
   const navigate = useNavigate();
 
+  const fetchNotificationCount = async () => {
+    try {
+      const token = localStorage.getItem("accessToken");
+      if (!token) return;
+      const res = await fetch("http://192.168.1.10:3000/api/teams/notifications", {
+        headers: { Authorization: `Bearer ${token}` }
+      });
+      const data = await res.json();
+      if (res.ok && Array.isArray(data)) {
+        setNotificationCount(data.length);
+      }
+    } catch (err) {
+      console.error("Failed to fetch notification count", err);
+    }
+  };
+
+  useEffect(() => {
+    fetchNotificationCount();
+  }, []);
   useEffect(() => {
     // Close popup when clicking outside
     const handleClickOutside = (event) => {
@@ -255,7 +284,46 @@ const Navbar = ({ socket, sessionId, setSessionId, isAdmin, onToggleParticipants
                                             <span className="text-gray-300 truncate font-medium">{user.email}</span>
                                         </div>
                                     </div>
+                                      <div className="flex flex-col gap-1.5 pt-2 border-t border-white/10">
+                                          <button 
+                                              onClick={() => { setIsProfileOpen(false); setIsCreateTeamOpen(true); }}
+                                              className="w-full flex items-center justify-between p-2.5 rounded-xl hover:bg-white/5 text-gray-300 hover:text-white transition-colors group"
+                                          >
+                                              <div className="flex items-center gap-3">
+                                                  <div className="p-1.5 rounded-lg bg-blue-500/10 text-blue-400 group-hover:bg-blue-500/20 group-hover:scale-110 transition-all">
+                                                      <Users size={16} />
+                                                  </div>
+                                                  <span className="font-medium">Create Team</span>
+                                              </div>
+                                              <ChevronRight size={16} className="text-gray-500 group-hover:text-gray-300 transition-colors" />
+                                          </button>
 
+                                          <button 
+                                              onClick={() => { setIsProfileOpen(false); setIsJoinTeamOpen(true); }}
+                                              className="w-full flex items-center justify-between p-2.5 rounded-xl hover:bg-white/5 text-gray-300 hover:text-white transition-colors group"
+                                          >
+                                              <div className="flex items-center gap-3">
+                                                  <div className="p-1.5 rounded-lg bg-purple-500/10 text-purple-400 group-hover:bg-purple-500/20 group-hover:scale-110 transition-all">
+                                                      <UserCog size={16} />
+                                                  </div>
+                                                  <span className="font-medium">Join Team</span>
+                                              </div>
+                                              <ChevronRight size={16} className="text-gray-500 group-hover:text-gray-300 transition-colors" />
+                                          </button>
+
+                                          <button 
+                                              onClick={() => { setIsProfileOpen(false); setIsMyTeamsOpen(true); }}
+                                              className="w-full flex items-center justify-between p-2.5 rounded-xl hover:bg-white/5 text-gray-300 hover:text-white transition-colors group"
+                                          >
+                                              <div className="flex items-center gap-3">
+                                                  <div className="p-1.5 rounded-lg bg-green-500/10 text-green-400 group-hover:bg-green-500/20 group-hover:scale-110 transition-all">
+                                                      <Users size={16} />
+                                                  </div>
+                                                  <span className="font-medium">My Teams</span>
+                                              </div>
+                                              <ChevronRight size={16} className="text-gray-500 group-hover:text-gray-300 transition-colors" />
+                                          </button>
+                                      </div>
                                     <button 
                                         onClick={handleLogout}
                                         className="mt-2 w-full flex items-center justify-center gap-2 py-2.5 px-4 bg-rose-500/10 hover:bg-rose-500/20 text-rose-500 rounded-xl transition-all duration-200 font-semibold border border-rose-500/20 hover:border-rose-500/30"
@@ -270,7 +338,22 @@ const Navbar = ({ socket, sessionId, setSessionId, isAdmin, onToggleParticipants
                         </div>
                     )}
                 </div>
-
+                  <div className="relative">
+                      <button
+                          onClick={() => setIsNotificationsOpen(true)}
+                          className="text-gray-400 hover:text-white hover:bg-white/10 p-2 rounded-full transition-all duration-200 relative"
+                      >
+                          <Bell size={20} strokeWidth={1.5} />
+                          {notificationCount > 0 && (
+                            <span className="absolute top-1 right-1 flex h-3 w-3">
+                              <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-red-400 opacity-75"></span>
+                              <span className="relative inline-flex rounded-full h-3 w-3 bg-red-500 justify-center items-center text-[10px] text-white">
+                                {notificationCount}
+                              </span>
+                            </span>
+                          )}
+                      </button>
+                  </div>
                 <div className="relative" ref={settingsRef}>
                     <button 
                         onClick={() => setIsSettingsOpen(!isSettingsOpen)}
@@ -358,6 +441,7 @@ const Navbar = ({ socket, sessionId, setSessionId, isAdmin, onToggleParticipants
                 onClose={() => setIsCreateModalOpen(false)}
                 socket={socket}
                 setSessionId={setSessionId}
+                setIsAdmin={setIsAdmin}
             />
             
             <JoinSessionModal
@@ -365,6 +449,32 @@ const Navbar = ({ socket, sessionId, setSessionId, isAdmin, onToggleParticipants
                 onClose={() => setIsJoinModalOpen(false)}
                 socket={socket}
                 setSessionId={setSessionId}
+            />
+
+            <CreateTeamModal
+                isOpen={isCreateTeamOpen}
+                onClose={() => setIsCreateTeamOpen(false)}
+            />
+
+            <JoinTeamModal
+                isOpen={isJoinTeamOpen}
+                onClose={() => setIsJoinTeamOpen(false)}
+            />
+
+            <NotificationsModal
+                isOpen={isNotificationsOpen}
+                onClose={() => {
+                  setIsNotificationsOpen(false);
+                  fetchNotificationCount();
+                }}
+            />
+
+            <MyTeamsModal
+                isOpen={isMyTeamsOpen}
+                onClose={() => setIsMyTeamsOpen(false)}
+                socket={socket}
+                setSessionId={setSessionId}
+                setIsAdmin={setIsAdmin}
             />
 
             <AlertModal
