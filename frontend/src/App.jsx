@@ -1,5 +1,6 @@
 import React from 'react'
 import { BrowserRouter as Router, Routes, Route } from "react-router-dom";
+import Landing from './pages/Landing.jsx'
 import Login from './pages/Login.jsx'
 import Register from './pages/Register.jsx'
 import Home from './pages/Home.jsx'
@@ -10,7 +11,8 @@ const App = () => {
   return (
     <Router>
       <Routes>
-        <Route path="/" element={<Login />} />
+        <Route path="/" element={<Landing />} />
+        <Route path="/login" element={<Login />} />
         <Route path="/Register" element={<Register />} />
         <Route path="/forget-password" element={<Forget />} />
         <Route 

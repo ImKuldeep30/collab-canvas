@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react'
-import { User, Settings, LogOut, Mail, CheckCircle2, XCircle, Key, UserCog, Palette, Bell, ChevronRight, Users, X } from 'lucide-react';
+import { User, Settings, LogOut, Mail, CheckCircle2, XCircle, Key, UserCog, Palette, Bell, ChevronRight, Users, X, UserPlus, LogIn, Copy, Check, Info } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import UpdateProfileModal from './UpdateProfileModal';
 import ChangePasswordModal from './ChangePasswordModal';
@@ -27,9 +27,18 @@ const Navbar = ({ socket, sessionId, setSessionId, isAdmin, setIsAdmin, onToggle
   const [isNotificationsOpen, setIsNotificationsOpen] = useState(false);
   const [notificationCount, setNotificationCount] = useState(0);
   
-  const [user, setUser] = useState(null);
+  const [user, setUser] = useState(() => {
+    try {
+      const cached = localStorage.getItem("user");
+      return cached ? JSON.parse(cached) : null;
+    } catch {
+      return null;
+    }
+  });
   const [loading, setLoading] = useState(false);
   const [hasFetched, setHasFetched] = useState(false);
+  const [copied, setCopied] = useState(false);
+
   const profileRef = useRef(null);
   const settingsRef = useRef(null);
   const navigate = useNavigate();
@@ -53,8 +62,8 @@ const Navbar = ({ socket, sessionId, setSessionId, isAdmin, setIsAdmin, onToggle
   useEffect(() => {
     fetchNotificationCount();
   }, []);
+
   useEffect(() => {
-    // Close popup when clicking outside
     const handleClickOutside = (event) => {
       if (profileRef.current && !profileRef.current.contains(event.target)) {
         setIsProfileOpen(false);
@@ -81,7 +90,6 @@ const Navbar = ({ socket, sessionId, setSessionId, isAdmin, setIsAdmin, onToggle
             }
           });
           
-          // Handle expired token logic
           if (res.status === 401) {
             const refreshToken = localStorage.getItem("refreshToken");
             if (refreshToken) {
@@ -96,14 +104,12 @@ const Navbar = ({ socket, sessionId, setSessionId, isAdmin, setIsAdmin, onToggle
                 token = refreshData.accessToken;
                 localStorage.setItem("accessToken", token);
                 
-                // Retry the original request with the renewed token
                 res = await fetch("http://192.168.1.10:3000/api/auth/me", {
                   headers: {
                     Authorization: `Bearer ${token}`
                   }
                 });
               } else {
-                // If refresh token is also invalid, clear storage and let ProtectedRoute handle it eventually
                 localStorage.removeItem("accessToken");
                 localStorage.removeItem("refreshToken");
                 localStorage.removeItem("user");
@@ -120,13 +126,10 @@ const Navbar = ({ socket, sessionId, setSessionId, isAdmin, setIsAdmin, onToggle
           const data = await res.json();
           if (!data.message) {
             setUser(data);
-            // Cache latest user data
             localStorage.setItem("user", JSON.stringify(data));
           }
         } catch (err) {
           console.error("Failed to fetch user:", err);
-          
-          // Fallback to local storage cache if network or server fails
           const localUser = localStorage.getItem("user");
           if (localUser) {
             try {
@@ -161,6 +164,7 @@ const Navbar = ({ socket, sessionId, setSessionId, isAdmin, setIsAdmin, onToggle
     } finally {
       localStorage.removeItem("accessToken");
       localStorage.removeItem("refreshToken");
+      localStorage.removeItem("user");
       navigate("/");
     }
   };
@@ -182,312 +186,380 @@ const Navbar = ({ socket, sessionId, setSessionId, isAdmin, setIsAdmin, onToggle
     setIsConfirmEndSessionOpen(false);
   };
 
+  const copySessionId = () => {
+    if (!sessionId) return;
+    navigator.clipboard.writeText(sessionId);
+    setCopied(true);
+    setTimeout(() => setCopied(false), 2000);
+  };
+
+  const getInitials = (name) => {
+    if (!name) return "?";
+    return name
+      .split(" ")
+      .map((n) => n[0])
+      .join("")
+      .toUpperCase()
+      .substring(0, 2);
+  };
+
   return (
     <>
-    <div className="h-12 w-[95%] max-w-5xl m-2 text-white flex px-4 justify-between rounded-2xl border-3 border-white/20 bg-[#171717]">
-        <div className="flex items-center gap-2 cursor-pointer group ">
-          <div className="w-6 h-6 bg-linear-to-br from-indigo-500 to-purple-600 rounded-md rotate-3 group-hover:rotate-12 transition-transform duration-300" />
-          <span className="text-white font-bold tracking-tight text-lg">
-            CanvasHub
+      <div className="h-12 w-full max-w-6xl mx-auto text-white flex items-center justify-between px-2 md:px-4 rounded-xl border border-white/15 bg-gradient-to-r from-indigo-500/[0.07] via-[#121214]/85 to-pink-500/[0.07] backdrop-blur-md shadow-[0_8px_32px_rgba(99,102,241,0.08),_0_8px_32px_rgba(0,0,0,0.5),_0_0_0_1px_rgba(255,255,255,0.05)] transition-all duration-300">
+        
+        {/* Left Side: Brand & Logo */}
+        <div className="flex items-center gap-1.5 md:gap-2 cursor-pointer group" onClick={() => navigate("/main")}>
+          <div className="relative w-8 h-8 flex items-center justify-center">
+            {/* Elegant 3D isometric cube logo with linear gradient faces */}
+            <svg className="w-full h-full" viewBox="0 0 32 32" fill="none" xmlns="http://www.w3.org/2000/svg">
+              <defs>
+                <linearGradient id="face-top" x1="16" y1="3" x2="16" y2="16" gradientUnits="userSpaceOnUse">
+                  <stop offset="0%" stopColor="#818cf8" />
+                  <stop offset="100%" stopColor="#6366f1" />
+                </linearGradient>
+                <linearGradient id="face-left" x1="5" y1="16" x2="16" y2="29" gradientUnits="userSpaceOnUse">
+                  <stop offset="0%" stopColor="#a855f7" stopOpacity="0.85" />
+                  <stop offset="100%" stopColor="#7c3aed" stopOpacity="0.85" />
+                </linearGradient>
+                <linearGradient id="face-right" x1="16" y1="16" x2="27" y2="22.5" gradientUnits="userSpaceOnUse">
+                  <stop offset="0%" stopColor="#ec4899" stopOpacity="0.9" />
+                  <stop offset="100%" stopColor="#db2777" stopOpacity="0.9" />
+                </linearGradient>
+              </defs>
+              <g className="transform origin-center transition-all duration-700 ease-out group-hover:rotate-[360deg] group-hover:scale-105">
+                {/* Top Face */}
+                <path d="M16 3L27 9.5L16 16L5 9.5Z" fill="url(#face-top)" />
+                {/* Left Face */}
+                <path d="M5 9.5L16 16V29L5 22.5Z" fill="url(#face-left)" />
+                {/* Right Face */}
+                <path d="M27 9.5L16 16V29L27 22.5Z" fill="url(#face-right)" />
+                
+                {/* Sharp grid outlines */}
+                <path d="M16 3L27 9.5V22.5L16 29L5 22.5V9.5Z" stroke="#ffffff" strokeWidth="1.2" strokeLinejoin="round" opacity="0.3" />
+                <path d="M16 16L5 9.5M16 16L27 9.5M16 16V29" stroke="#ffffff" strokeWidth="1.2" strokeLinejoin="round" opacity="0.3" />
+              </g>
+            </svg>
+          </div>
+          <span className="text-white font-extrabold tracking-tight text-sm md:text-base bg-clip-text text-transparent bg-gradient-to-r from-white via-white to-purple-200 hidden sm:inline-block">
+            CoCanvas
           </span>
         </div>
 
-        <div className='flex gap-10 '>
-            <div className="hidden md:flex items-center gap-10">
-                <button
-                  onClick={handleInvite}
-                  className="text-gray-400 text-sm font-medium hover:text-white transition-colors duration-200 relative group"
-                >
-                  Invite
-                  <span className="absolute -bottom-1 left-0 w-0 h-0.5 bg-indigo-500 transition-all duration-300 group-hover:w-full" />
-                </button>
-                <button
-                  onClick={handleJoin}
-                  className="text-gray-400 text-sm font-medium hover:text-white transition-colors duration-200 relative group"
-                >
-                  Join
-                  <span className="absolute -bottom-1 left-0 w-0 h-0.5 bg-indigo-500 transition-all duration-300 group-hover:w-full" />
-                </button>
-                {sessionId && (
-                  <div className="flex items-center gap-3">
-                    <button 
-                      onClick={onToggleParticipants}
-                      className="text-gray-400 hover:text-white transition-colors duration-200 relative group p-2 rounded-lg hover:bg-white/10 flex items-center justify-center"
-                      title="Participants"
-                    >
-                      <Users size={18} />
-                      {joinRequestsCount > 0 && isAdmin && (
-                        <span className="absolute top-0 right-0 w-2.5 h-2.5 bg-red-500 rounded-full animate-pulse border border-[#171717]"></span>
-                      )}
-                    </button>
-                  </div>
-                )}
+        {/* Center: Collaboration Session Display */}
+        <div className="flex items-center gap-1.5 md:gap-2">
+          {/* Session ID display integrated in the navbar */}
+          {sessionId && (
+            <div 
+              onClick={copySessionId}
+              className="group cursor-pointer flex items-center gap-1.5 bg-emerald-500/10 border border-emerald-500/20 hover:border-emerald-500/40 rounded-lg px-2 py-1 md:px-2.5 md:py-1.5 transition-all duration-200 shadow-[0_2px_10px_rgba(16,185,129,0.05)]"
+              title="Click to copy Session ID"
+            >
+              <span className="relative flex h-1.5 w-1.5">
+                <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
+                <span className="relative inline-flex rounded-full h-1.5 w-1.5 bg-emerald-500"></span>
+              </span>
+              <span className="text-emerald-400 text-[10px] md:text-[11px] font-bold tracking-wider uppercase hidden sm:inline">
+                ID: {sessionId}
+              </span>
+              {copied ? (
+                <Check size={12} className="text-emerald-400 animate-in zoom-in duration-200" />
+              ) : (
+                <Copy size={12} className="text-emerald-500/60 group-hover:text-emerald-400 transition-colors" />
+              )}
             </div>
-                
-            <div className="flex items-center gap-2 md:gap-10">
-                {sessionId && isAdmin && (
-                  <button
-                    onClick={terminateSession}
-                    className="text-red-400 hover:text-white hover:bg-red-600/80 transition-all duration-200 group p-1.5 rounded-lg flex items-center justify-center gap-1 border border-red-500/20 hover:border-transparent"
-                    title="End Session for All"
-                  >
-                    <X size={16} />
-                    <span className="text-xs font-medium">End Session</span>
-                  </button>
-                )}
-                <div className="relative" ref={profileRef}>
-                    <button 
-                        onClick={() => setIsProfileOpen(!isProfileOpen)}
-                        className={`text-gray-400 hover:text-white hover:bg-white/10 p-2 rounded-full transition-all duration-200 ${isProfileOpen ? 'bg-white/10 text-white' : ''}`}
-                    >
-                        <User size={20} strokeWidth={1.5} />
-                    </button>
+          )}
 
-                    {/* Profile Popup */}
-                    {isProfileOpen && (
-                        <div className="absolute right-0 mt-3 w-72 bg-[#1f1f1f] rounded-2xl border-2 border-white/10 shadow-2xl p-5 flex flex-col gap-4 z-50 transform origin-top-right transition-all">
-                            {loading ? (
-                                <div className="animate-pulse flex space-x-4">
-                                    <div className="rounded-full bg-white/10 h-12 w-12"></div>
-                                    <div className="flex-1 space-y-3 py-2">
-                                        <div className="h-2 bg-white/10 rounded w-3/4"></div>
-                                        <div className="h-2 bg-white/10 rounded w-1/2"></div>
-                                    </div>
-                                </div>
-                            ) : user ? (
-                                <>
-                                    <div className="flex items-center gap-4 pb-4 border-b border-white/10">
-                                        <div className="w-14 h-14 rounded-full bg-linear-to-br from-indigo-500 to-purple-600 flex items-center justify-center text-2xl font-bold uppercase text-white shadow-inner">
-                                            {user.name?.charAt(0) || 'U'}
-                                        </div>
-                                        <div className="flex flex-col">
-                                            <span className="font-semibold text-white text-lg tracking-wide">{user.name}</span>
-                                            <div className="flex items-center gap-1.5 text-xs mt-1">
-                                                {user.isVerified ? (
-                                                    <>
-                                                        <CheckCircle2 size={14} className="text-emerald-400" />
-                                                        <span className="text-emerald-400/90 font-medium">Verified Account</span>
-                                                    </>
-                                                ) : (
-                                                    <>
-                                                        <XCircle size={14} className="text-rose-400" />
-                                                        <span className="text-rose-400/90 font-medium">Unverified</span>
-                                                    </>
-                                                )}
-                                            </div>
-                                        </div>
-                                    </div>
-                                    
-                                    <div className="flex flex-col gap-3 text-sm">
-                                        <div className="flex items-center gap-3 p-3 rounded-xl bg-white/5 border border-white/5 hover:bg-white/10 transition-colors">
-                                            <Mail size={18} className="text-indigo-400" />
-                                            <span className="text-gray-300 truncate font-medium">{user.email}</span>
-                                        </div>
-                                    </div>
-                                      <div className="flex flex-col gap-1.5 pt-2 border-t border-white/10">
-                                          <button 
-                                              onClick={() => { setIsProfileOpen(false); setIsCreateTeamOpen(true); }}
-                                              className="w-full flex items-center justify-between p-2.5 rounded-xl hover:bg-white/5 text-gray-300 hover:text-white transition-colors group"
-                                          >
-                                              <div className="flex items-center gap-3">
-                                                  <div className="p-1.5 rounded-lg bg-blue-500/10 text-blue-400 group-hover:bg-blue-500/20 group-hover:scale-110 transition-all">
-                                                      <Users size={16} />
-                                                  </div>
-                                                  <span className="font-medium">Create Team</span>
-                                              </div>
-                                              <ChevronRight size={16} className="text-gray-500 group-hover:text-gray-300 transition-colors" />
-                                          </button>
+          {sessionId && isAdmin && (
+            <button
+              onClick={terminateSession}
+              className="text-rose-400 hover:text-white bg-rose-500/10 hover:bg-rose-600 border border-rose-500/20 hover:border-transparent px-2 py-1 md:px-2.5 md:py-1.5 rounded-lg transition-all duration-200 flex items-center gap-1 cursor-pointer"
+              title="End Session for All"
+            >
+              <X size={14} />
+              <span className="text-[11px] font-semibold hidden lg:inline">End Session</span>
+            </button>
+          )}
 
-                                          <button 
-                                              onClick={() => { setIsProfileOpen(false); setIsJoinTeamOpen(true); }}
-                                              className="w-full flex items-center justify-between p-2.5 rounded-xl hover:bg-white/5 text-gray-300 hover:text-white transition-colors group"
-                                          >
-                                              <div className="flex items-center gap-3">
-                                                  <div className="p-1.5 rounded-lg bg-purple-500/10 text-purple-400 group-hover:bg-purple-500/20 group-hover:scale-110 transition-all">
-                                                      <UserCog size={16} />
-                                                  </div>
-                                                  <span className="font-medium">Join Team</span>
-                                              </div>
-                                              <ChevronRight size={16} className="text-gray-500 group-hover:text-gray-300 transition-colors" />
-                                          </button>
-
-                                          <button 
-                                              onClick={() => { setIsProfileOpen(false); setIsMyTeamsOpen(true); }}
-                                              className="w-full flex items-center justify-between p-2.5 rounded-xl hover:bg-white/5 text-gray-300 hover:text-white transition-colors group"
-                                          >
-                                              <div className="flex items-center gap-3">
-                                                  <div className="p-1.5 rounded-lg bg-green-500/10 text-green-400 group-hover:bg-green-500/20 group-hover:scale-110 transition-all">
-                                                      <Users size={16} />
-                                                  </div>
-                                                  <span className="font-medium">My Teams</span>
-                                              </div>
-                                              <ChevronRight size={16} className="text-gray-500 group-hover:text-gray-300 transition-colors" />
-                                          </button>
-                                      </div>
-                                    <button 
-                                        onClick={handleLogout}
-                                        className="mt-2 w-full flex items-center justify-center gap-2 py-2.5 px-4 bg-rose-500/10 hover:bg-rose-500/20 text-rose-500 rounded-xl transition-all duration-200 font-semibold border border-rose-500/20 hover:border-rose-500/30"
-                                    >
-                                        <LogOut size={18} strokeWidth={2.5} />
-                                        Logout
-                                    </button>
-                                </>
-                            ) : (
-                                <div className="text-center text-gray-400 text-sm py-4">Failed to load profile</div>
-                            )}
-                        </div>
-                    )}
-                </div>
-                  <div className="relative">
-                      <button
-                          onClick={() => setIsNotificationsOpen(true)}
-                          className="text-gray-400 hover:text-white hover:bg-white/10 p-2 rounded-full transition-all duration-200 relative"
-                      >
-                          <Bell size={20} strokeWidth={1.5} />
-                          {notificationCount > 0 && (
-                            <span className="absolute top-1 right-1 flex h-3 w-3">
-                              <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-red-400 opacity-75"></span>
-                              <span className="relative inline-flex rounded-full h-3 w-3 bg-red-500 justify-center items-center text-[10px] text-white">
-                                {notificationCount}
-                              </span>
-                            </span>
-                          )}
-                      </button>
-                  </div>
-                <div className="relative" ref={settingsRef}>
-                    <button 
-                        onClick={() => setIsSettingsOpen(!isSettingsOpen)}
-                        className={`text-gray-400 hover:text-white hover:bg-white/10 p-2 rounded-full transition-all duration-200 ${isSettingsOpen ? 'bg-white/10 text-white' : ''}`}
-                    >
-                        <Settings size={20} strokeWidth={1.5} />
-                    </button>
-
-                    {/* Settings Popup */}
-                    {isSettingsOpen && (
-                        <div className="absolute right-0 mt-3 w-64 bg-[#1f1f1f] rounded-2xl border-2 border-white/10 shadow-2xl p-2 flex flex-col z-50 transform origin-top-right transition-all">
-                            <div className="px-3 py-2 border-b border-white/10 mb-2">
-                                <span className="text-white font-semibold tracking-wide text-sm">Settings</span>
-                            </div>
-
-                            <button
-                                onClick={() => { setIsSettingsOpen(false); setIsUpdateProfileModalOpen(true); }} 
-                                className="w-full flex items-center justify-between p-3 rounded-xl hover:bg-white/5 text-gray-300 hover:text-white transition-colors group"
-                            >
-                                <div className="flex items-center gap-3">
-                                    <div className="p-1.5 rounded-lg bg-indigo-500/10 text-indigo-400 group-hover:bg-indigo-500/20 group-hover:text-indigo-300 transition-colors">
-                                        <UserCog size={16} />
-                                    </div>
-                                    <span className="text-sm font-medium">Update Profile</span>
-                                </div>
-                                <ChevronRight size={14} className="opacity-0 group-hover:opacity-100 transition-opacity" />
-                            </button>
-
-                            <button 
-                                onClick={() => { setIsSettingsOpen(false); setIsChangePasswordModalOpen(true); }}
-                                className="w-full flex items-center justify-between p-3 rounded-xl hover:bg-white/5 text-gray-300 hover:text-white transition-colors group"
-                            >
-                                <div className="flex items-center gap-3">
-                                    <div className="p-1.5 rounded-lg bg-emerald-500/10 text-emerald-400 group-hover:bg-emerald-500/20 group-hover:text-emerald-300 transition-colors">
-                                        <Key size={16} />
-                                    </div>
-                                    <span className="text-sm font-medium">Change Password</span>
-                                </div>
-                                <ChevronRight size={14} className="opacity-0 group-hover:opacity-100 transition-opacity" />
-                            </button>
-
-                            <button className="w-full flex items-center justify-between p-3 rounded-xl hover:bg-white/5 text-gray-300 hover:text-white transition-colors group">
-                                <div className="flex items-center gap-3">
-                                    <div className="p-1.5 rounded-lg bg-orange-500/10 text-orange-400 group-hover:bg-orange-500/20 group-hover:text-orange-300 transition-colors">
-                                        <Bell size={16} />
-                                    </div>
-                                    <div className="flex flex-col items-start">
-                                      <span className="text-sm font-medium">Notifications</span>
-                                      <span className="text-[10px] text-gray-500">Coming soon</span>
-                                    </div>
-                                </div>
-                            </button>
-
-                            <button className="w-full flex items-center justify-between p-3 rounded-xl hover:bg-white/5 text-gray-300 hover:text-white transition-colors group">
-                                <div className="flex items-center gap-3">
-                                    <div className="p-1.5 rounded-lg bg-rose-500/10 text-rose-400 group-hover:bg-rose-500/20 group-hover:text-rose-300 transition-colors">
-                                        <Palette size={16} />
-                                    </div>
-                                    <div className="flex flex-col items-start">
-                                      <span className="text-sm font-medium">Appearance</span>
-                                      <span className="text-[10px] text-gray-500">Coming soon</span>
-                                    </div>
-                                </div>
-                            </button>
-
-                        </div>
-                    )}
-                </div>
-            </div>
-
-            <UpdateProfileModal 
-                isOpen={isUpdateProfileModalOpen} 
-                onClose={() => setIsUpdateProfileModalOpen(false)} 
-                user={user}
-                setUser={setUser}
-            />
-            
-            <ChangePasswordModal 
-                isOpen={isChangePasswordModalOpen} 
-                onClose={() => setIsChangePasswordModalOpen(false)} 
-            />
-
-            <CreateSessionModal
-                isOpen={isCreateModalOpen}
-                onClose={() => setIsCreateModalOpen(false)}
-                socket={socket}
-                setSessionId={setSessionId}
-                setIsAdmin={setIsAdmin}
-            />
-            
-            <JoinSessionModal
-                isOpen={isJoinModalOpen}
-                onClose={() => setIsJoinModalOpen(false)}
-                socket={socket}
-                setSessionId={setSessionId}
-            />
-
-            <CreateTeamModal
-                isOpen={isCreateTeamOpen}
-                onClose={() => setIsCreateTeamOpen(false)}
-            />
-
-            <JoinTeamModal
-                isOpen={isJoinTeamOpen}
-                onClose={() => setIsJoinTeamOpen(false)}
-            />
-
-            <NotificationsModal
-                isOpen={isNotificationsOpen}
-                onClose={() => {
-                  setIsNotificationsOpen(false);
-                  fetchNotificationCount();
-                }}
-            />
-
-            <MyTeamsModal
-                isOpen={isMyTeamsOpen}
-                onClose={() => setIsMyTeamsOpen(false)}
-                socket={socket}
-                setSessionId={setSessionId}
-                setIsAdmin={setIsAdmin}
-            />
-
-            <AlertModal
-                isOpen={isConfirmEndSessionOpen}
-                title="End Session"
-                message="Are you sure you want to end this session? Everyone will be kicked out."
-                type="confirm"
-                onConfirm={handleConfirmTerminate}
-                onClose={() => setIsConfirmEndSessionOpen(false)}
-            />
-
+          {sessionId && (
+            <button 
+              onClick={onToggleParticipants}
+              className="text-gray-400 hover:text-white hover:bg-white/5 border border-white/5 hover:border-white/10 p-1.5 rounded-lg transition-all duration-200 relative flex items-center justify-center cursor-pointer"
+              title="Participants"
+            >
+              <Users size={16} />
+              {joinRequestsCount > 0 && isAdmin && (
+                <span className="absolute top-0.5 right-0.5 w-1.5 h-1.5 bg-rose-500 rounded-full animate-pulse"></span>
+              )}
+            </button>
+          )}
         </div>
-    </div>
+
+        {/* Right Side: Collaboration Buttons, Notifications, Settings, Profile */}
+        <div className="flex items-center gap-1.5 md:gap-2">
+          {/* Invite & Join buttons now placed on the right */}
+          <button
+            onClick={handleInvite}
+            className="px-2.5 py-1.5 md:px-3.5 md:py-1.5 text-xs font-bold rounded-lg text-white bg-gradient-to-r from-indigo-500 via-purple-500 to-pink-500 hover:opacity-95 transition-all duration-200 shadow-[0_2px_10px_rgba(99,102,241,0.2)] flex items-center gap-1.5 cursor-pointer active:scale-95 group border-none"
+          >
+            <UserPlus size={14} className="text-white" />
+            <span className="hidden lg:inline">Invite</span>
+          </button>
+          <button
+            onClick={handleJoin}
+            className="px-2.5 py-1.5 md:px-3.5 md:py-1.5 text-xs font-semibold rounded-lg text-gray-200 hover:text-white bg-white/5 hover:bg-white/10 border border-white/10 hover:border-white/20 transition-all duration-200 flex items-center gap-1.5 cursor-pointer active:scale-95 group"
+          >
+            <LogIn size={14} className="text-gray-300 group-hover:text-white transition-colors" />
+            <span className="hidden lg:inline">Join</span>
+          </button>
+
+          {/* Notifications */}
+          <div className="relative">
+            <button
+              onClick={() => setIsNotificationsOpen(true)}
+              className="text-gray-400 hover:text-white hover:bg-white/5 border border-white/5 hover:border-white/10 p-1.5 rounded-lg transition-all duration-200 relative flex items-center justify-center cursor-pointer"
+              title="Notifications"
+            >
+              <Bell size={16} strokeWidth={2} />
+              {notificationCount > 0 && (
+                <span className="absolute -top-0.5 -right-0.5 flex h-3.5 w-3.5">
+                  <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-rose-400 opacity-75"></span>
+                  <span className="relative inline-flex rounded-full h-3.5 w-3.5 bg-rose-500 justify-center items-center text-[8px] font-bold text-white">
+                    {notificationCount}
+                  </span>
+                </span>
+              )}
+            </button>
+          </div>
+
+          {/* Settings */}
+          <div className="relative" ref={settingsRef}>
+            <button 
+              onClick={() => setIsSettingsOpen(!isSettingsOpen)}
+              className={`text-gray-400 hover:text-white hover:bg-white/5 border border-white/5 hover:border-white/10 p-1.5 rounded-lg transition-all duration-200 flex items-center justify-center cursor-pointer ${isSettingsOpen ? 'bg-white/10 text-white' : ''}`}
+              title="Settings"
+            >
+              <Settings size={16} strokeWidth={2} />
+            </button>
+
+            {/* Settings Dropdown */}
+            {isSettingsOpen && (
+              <div className="absolute right-0 mt-2 w-80 bg-[#121214]/95 backdrop-blur-xl rounded-2xl border border-white/10 shadow-[0_25px_50px_rgba(0,0,0,0.6)] p-5 flex flex-col gap-3 z-50 animate-in fade-in slide-in-from-top-2 duration-200">
+                <div className="px-3 py-1.5 border-b border-white/5 mb-1.5">
+                  <span className="text-gray-400 font-extrabold tracking-wider text-[10px] uppercase">System Settings</span>
+                </div>
+
+                <button
+                  onClick={() => { setIsSettingsOpen(false); setIsUpdateProfileModalOpen(true); }} 
+                  className="w-full flex items-center justify-between p-2.5 rounded-xl hover:bg-white/5 text-gray-300 hover:text-white transition-colors group cursor-pointer"
+                >
+                  <div className="flex items-center gap-3">
+                    <div className="p-2 rounded-lg bg-indigo-500/10 text-indigo-400 group-hover:bg-indigo-500/20 group-hover:scale-105 transition-all duration-200">
+                      <UserCog size={14} />
+                    </div>
+                    <span className="text-xs font-bold">Update Profile</span>
+                  </div>
+                  <ChevronRight size={14} className="text-gray-500 group-hover:text-gray-300 transition-colors" />
+                </button>
+
+                <button 
+                  onClick={() => { setIsSettingsOpen(false); setIsChangePasswordModalOpen(true); }}
+                  className="w-full flex items-center justify-between p-2.5 rounded-xl hover:bg-white/5 text-gray-300 hover:text-white transition-colors group cursor-pointer"
+                >
+                  <div className="flex items-center gap-3">
+                    <div className="p-2 rounded-lg bg-emerald-500/10 text-emerald-400 group-hover:bg-emerald-500/20 group-hover:scale-105 transition-all duration-200">
+                      <Key size={14} />
+                    </div>
+                    <span className="text-xs font-bold">Change Password</span>
+                  </div>
+                  <ChevronRight size={14} className="text-gray-500 group-hover:text-gray-300 transition-colors" />
+                </button>
+              </div>
+            )}
+          </div>
+
+          {/* User Profile */}
+          <div className="relative" ref={profileRef}>
+            <button 
+              onClick={() => setIsProfileOpen(!isProfileOpen)}
+              className="hover:scale-105 active:scale-95 rounded-full transition-all duration-200 flex items-center justify-center cursor-pointer"
+              title="User Account"
+            >
+              {user?.name ? (
+                <div className="w-8 h-8 rounded-full bg-gradient-to-tr from-indigo-500 to-purple-600 border border-white/20 text-white font-bold text-xs flex items-center justify-center uppercase shadow-[0_2px_10px_rgba(99,102,241,0.2)]">
+                  {getInitials(user.name)}
+                </div>
+              ) : (
+                <div className="w-8 h-8 rounded-full bg-white/5 hover:bg-white/10 text-gray-400 hover:text-white border border-white/5 hover:border-white/10 flex items-center justify-center">
+                  <User size={16} strokeWidth={2} />
+                </div>
+              )}
+            </button>
+
+            {/* Profile Dropdown */}
+            {isProfileOpen && (
+              <div className="absolute right-0 mt-2 w-80 bg-[#121214]/95 backdrop-blur-xl rounded-2xl border border-white/10 shadow-[0_25px_50px_rgba(0,0,0,0.6)] p-5 flex flex-col gap-4 z-50 animate-in fade-in slide-in-from-top-2 duration-200">
+                {loading ? (
+                  <div className="animate-pulse flex space-x-2.5 p-1.5">
+                    <div className="rounded bg-white/10 h-8 w-8"></div>
+                    <div className="flex-1 space-y-1.5 py-0.5">
+                      <div className="h-2.5 bg-white/10 rounded w-3/4"></div>
+                      <div className="h-2 bg-white/10 rounded w-1/2"></div>
+                    </div>
+                  </div>
+                ) : user ? (
+                  <>
+                    <div className="flex items-center gap-3.5 pb-3 border-b border-white/5">
+                      <div className="w-12 h-12 rounded-full bg-gradient-to-tr from-indigo-500 to-purple-600 border border-white/10 flex items-center justify-center text-sm font-extrabold uppercase text-white shadow-inner">
+                        {getInitials(user.name)}
+                      </div>
+                      <div className="flex flex-col min-w-0">
+                        <span className="font-extrabold text-white text-sm truncate tracking-wide">{user.name}</span>
+                        <div className="flex items-center gap-1 mt-0.5">
+                          {user.isVerified ? (
+                            <>
+                              <CheckCircle2 size={11} className="text-emerald-400" />
+                              <span className="text-[10px] text-emerald-400/90 font-semibold tracking-wide">Verified Account</span>
+                            </>
+                          ) : (
+                            <>
+                              <XCircle size={11} className="text-rose-400" />
+                              <span className="text-[10px] text-rose-400/90 font-semibold tracking-wide">Unverified Account</span>
+                            </>
+                          )}
+                        </div>
+                      </div>
+                    </div>
+                    
+                    <div className="flex flex-col gap-1.5">
+                      <div className="flex items-center gap-3 p-2.5 rounded-xl bg-black/40 border border-white/5 hover:border-white/10 transition-colors duration-200 shadow-inner">
+                        <Mail size={15} className="text-indigo-400 shrink-0" />
+                        <span className="text-xs text-gray-300 truncate font-semibold">{user.email}</span>
+                      </div>
+                    </div>
+
+                    <div className="flex flex-col gap-1 pt-2 border-t border-white/5">
+                      <button 
+                        onClick={() => { setIsProfileOpen(false); setIsCreateTeamOpen(true); }}
+                        className="w-full flex items-center justify-between p-2.5 rounded-xl hover:bg-white/5 text-gray-300 hover:text-white transition-colors duration-200 group cursor-pointer"
+                      >
+                        <div className="flex items-center gap-3">
+                          <div className="p-2 rounded-lg bg-blue-500/10 text-blue-400 group-hover:bg-blue-500/20 group-hover:scale-105 transition-all">
+                            <Users size={14} />
+                          </div>
+                          <span className="text-xs font-bold">Create Team</span>
+                        </div>
+                        <ChevronRight size={14} className="text-gray-500 group-hover:text-gray-300 transition-colors" />
+                      </button>
+
+                      <button 
+                        onClick={() => { setIsProfileOpen(false); setIsJoinTeamOpen(true); }}
+                        className="w-full flex items-center justify-between p-2.5 rounded-xl hover:bg-white/5 text-gray-300 hover:text-white transition-colors duration-200 group cursor-pointer"
+                      >
+                        <div className="flex items-center gap-3">
+                          <div className="p-2 rounded-lg bg-purple-500/10 text-purple-400 group-hover:bg-purple-500/20 group-hover:scale-105 transition-all">
+                            <UserCog size={14} />
+                          </div>
+                          <span className="text-xs font-bold">Join Team</span>
+                        </div>
+                        <ChevronRight size={14} className="text-gray-500 group-hover:text-gray-300 transition-colors" />
+                      </button>
+
+                      <button 
+                        onClick={() => { setIsProfileOpen(false); setIsMyTeamsOpen(true); }}
+                        className="w-full flex items-center justify-between p-2.5 rounded-xl hover:bg-white/5 text-gray-300 hover:text-white transition-colors duration-200 group cursor-pointer"
+                      >
+                        <div className="flex items-center gap-3">
+                          <div className="p-2 rounded-lg bg-green-500/10 text-green-400 group-hover:bg-green-500/20 group-hover:scale-105 transition-all">
+                            <Users size={14} />
+                          </div>
+                          <span className="text-xs font-bold">My Teams</span>
+                        </div>
+                        <ChevronRight size={14} className="text-gray-500 group-hover:text-gray-300 transition-colors" />
+                      </button>
+                    </div>
+
+                    <button 
+                      onClick={handleLogout}
+                      className="mt-2 w-full flex items-center justify-center gap-2 py-3 px-4 bg-rose-500/10 hover:bg-rose-500 text-rose-500 hover:text-white rounded-xl transition-all duration-200 text-xs font-extrabold border border-rose-500/20 hover:border-transparent cursor-pointer active:scale-95 shadow-md shadow-rose-500/5"
+                    >
+                      <LogOut size={14} strokeWidth={2.5} />
+                      Logout
+                    </button>
+                  </>
+                ) : (
+                  <div className="text-center text-gray-400 text-[10px] py-3 flex items-center justify-center gap-1.5">
+                    <Info size={12} />
+                    Failed to load profile
+                  </div>
+                )}
+              </div>
+            )}
+          </div>
+        </div>
+      </div>
+
+      {/* Modal mounts (OUTSIDE the containing block to prevent absolute/fixed position glitches) */}
+      <UpdateProfileModal 
+        isOpen={isUpdateProfileModalOpen} 
+        onClose={() => setIsUpdateProfileModalOpen(false)} 
+        user={user}
+        setUser={setUser}
+      />
+      
+      <ChangePasswordModal 
+        isOpen={isChangePasswordModalOpen} 
+        onClose={() => setIsChangePasswordModalOpen(false)} 
+      />
+
+      <CreateSessionModal
+        isOpen={isCreateModalOpen}
+        onClose={() => setIsCreateModalOpen(false)}
+        socket={socket}
+        setSessionId={setSessionId}
+        setIsAdmin={setIsAdmin}
+      />
+      
+      <JoinSessionModal
+        isOpen={isJoinModalOpen}
+        onClose={() => setIsJoinModalOpen(false)}
+        socket={socket}
+        setSessionId={setSessionId}
+      />
+
+      <CreateTeamModal
+        isOpen={isCreateTeamOpen}
+        onClose={() => setIsCreateTeamOpen(false)}
+      />
+
+      <JoinTeamModal
+        isOpen={isJoinTeamOpen}
+        onClose={() => setIsJoinTeamOpen(false)}
+      />
+
+      <NotificationsModal
+        isOpen={isNotificationsOpen}
+        onClose={() => {
+          setIsNotificationsOpen(false);
+          fetchNotificationCount();
+        }}
+      />
+
+      <MyTeamsModal
+        isOpen={isMyTeamsOpen}
+        onClose={() => setIsMyTeamsOpen(false)}
+        socket={socket}
+        setSessionId={setSessionId}
+        setIsAdmin={setIsAdmin}
+      />
+
+      <AlertModal
+        isOpen={isConfirmEndSessionOpen}
+        title="End Session"
+        message="Are you sure you want to end this session? Everyone will be kicked out."
+        type="confirm"
+        onConfirm={handleConfirmTerminate}
+        onClose={() => setIsConfirmEndSessionOpen(false)}
+      />
     </>
   )
 }

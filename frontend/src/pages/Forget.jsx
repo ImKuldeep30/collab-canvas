@@ -36,7 +36,7 @@ const Forget = () => {
           "If this email exists, a password reset link has been sent.",
         );
         setTimeout(() => {
-          navigate("/", { replace: true });
+          navigate("/login", { replace: true });
         }, 5000);
       } else {
         setIsError(true);

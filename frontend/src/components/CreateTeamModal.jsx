@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { X, Users } from 'lucide-react';
+import { X, Users, Sparkles, FileText, Check, Copy } from 'lucide-react';
 import axios from 'axios';
 
 const CreateTeamModal = ({ isOpen, onClose }) => {
@@ -8,6 +8,7 @@ const CreateTeamModal = ({ isOpen, onClose }) => {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
   const [successData, setSuccessData] = useState(null);
+  const [copied, setCopied] = useState(false);
 
   if (!isOpen) return null;
 
@@ -31,40 +32,68 @@ const CreateTeamModal = ({ isOpen, onClose }) => {
     }
   };
 
+  const copyToClipboard = () => {
+    if (successData?.teamId) {
+      navigator.clipboard.writeText(successData.teamId);
+      setCopied(true);
+      setTimeout(() => setCopied(false), 2000);
+    }
+  };
+
   const handleClose = () => {
     setName('');
     setDescription('');
     setError(null);
     setSuccessData(null);
+    setCopied(false);
     onClose();
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm">
-      <div className="bg-[#1e1e1e] border border-white/10 rounded-2xl p-6 w-full max-w-sm shadow-2xl relative">
-        <div className="flex items-center justify-between mb-6">
-          <h2 className="text-xl font-bold text-white flex items-center gap-2">
-            <Users className="text-blue-400" size={24} />
+    <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-black/70 backdrop-blur-md">
+      <div 
+        className="bg-[#121214]/80 backdrop-blur-xl border border-white/10 rounded-2xl p-6 w-full max-w-md shadow-[0_25px_50px_rgba(0,0,0,0.6)] relative animate-in fade-in zoom-in-95 duration-200"
+        onClick={e => e.stopPropagation()}
+      >
+        <div className="flex items-center justify-between mb-5">
+          <h2 className="text-lg font-black tracking-tight text-white flex items-center gap-2">
+            <Users className="text-indigo-400" size={18} />
             Create Team
           </h2>
-          <button onClick={handleClose} className="text-gray-400 hover:text-white transition-colors p-1">
-            <X size={20} />
+          <button onClick={handleClose} className="text-gray-400 hover:text-white transition-colors p-1 rounded-lg hover:bg-white/5 cursor-pointer">
+            <X size={18} />
           </button>
         </div>
 
         {successData ? (
-          <div className="text-center py-4">
-            <div className="w-16 h-16 bg-green-500/20 rounded-full flex items-center justify-center mx-auto mb-4">
-              <Users className="text-green-400" size={32} />
+          <div className="text-center py-2 space-y-5">
+            <div className="w-16 h-16 bg-gradient-to-tr from-emerald-500/10 to-teal-500/10 border border-emerald-500/20 text-emerald-400 rounded-2xl flex items-center justify-center mx-auto mb-3 shadow-[0_8px_32px_rgba(16,185,129,0.08)]">
+              <Check size={28} strokeWidth={2.5} className="text-emerald-400 animate-pulse" />
             </div>
-            <h3 className="text-lg font-bold text-white mb-2">Team Created!</h3>
-            <p className="text-gray-400 text-sm mb-4">Share this Team ID with your members:</p>
-            <div className="bg-[#141414] p-3 rounded-lg border border-white/10 font-mono text-xl tracking-wider text-blue-400 mb-6">
-              {successData.teamId}
+            
+            <div>
+              <h3 className="text-base font-extrabold text-white mb-2">Team Created!</h3>
+              <p className="text-gray-300 text-xs mb-3 font-medium">Share this Team ID with your members:</p>
+              <div className="flex items-center justify-between bg-black/40 border border-white/10 rounded-xl p-3.5 gap-3 shadow-inner">
+                <span className="text-lg font-mono text-indigo-400 tracking-wider font-extrabold select-all pl-2">
+                  {successData.teamId}
+                </span>
+                <button
+                  onClick={copyToClipboard}
+                  className="p-2 text-gray-400 hover:text-white hover:bg-white/5 border border-white/5 hover:border-white/10 rounded-lg transition-all cursor-pointer"
+                  title="Copy Team ID"
+                >
+                  {copied ? <Check size={16} className="text-emerald-400 animate-in zoom-in duration-200" /> : <Copy size={16} />}
+                </button>
+              </div>
+              <p className="text-[10px] text-gray-500 mt-3.5 font-medium">
+                Users can input this ID inside the "Join Team" section.
+              </p>
             </div>
+            
             <button
               onClick={handleClose}
-              className="w-full bg-blue-600 hover:bg-blue-700 text-white font-medium py-2.5 rounded-xl transition-colors"
+              className="w-full bg-gradient-to-r from-indigo-500 via-purple-500 to-pink-500 hover:opacity-95 text-white font-extrabold py-3 rounded-xl transition-all duration-300 shadow-[0_4px_20px_rgba(99,102,241,0.25)] hover:scale-[1.01] active:scale-[0.99] cursor-pointer text-xs mt-2"
             >
               Done
             </button>
@@ -72,38 +101,44 @@ const CreateTeamModal = ({ isOpen, onClose }) => {
         ) : (
           <form onSubmit={handleSubmit} className="space-y-4">
             {error && (
-              <div className="bg-red-500/10 border border-red-500/50 text-red-400 text-sm p-3 rounded-xl">
+              <div className="bg-rose-500/10 border border-rose-500/15 text-rose-400 text-xs font-semibold p-3 rounded-xl">
                 {error}
               </div>
             )}
             
-            <div className="space-y-1">
-              <label className="text-xs font-medium text-gray-400 uppercase tracking-wider ml-1">Team Name</label>
+            <div>
+              <label className="block text-[10px] font-bold uppercase tracking-wider text-gray-400 mb-1.5 flex items-center gap-1.5">
+                <Sparkles size={12} className="text-indigo-400" />
+                Team Name
+              </label>
               <input
                 type="text"
                 value={name}
                 onChange={(e) => setName(e.target.value)}
-                placeholder="Awesome Builders"
+                placeholder="e.g. Frontend Squad"
                 required
-                className="w-full bg-[#141414] text-white rounded-xl px-4 py-3 border border-white/10 focus:border-blue-500 focus:ring-1 focus:ring-blue-500 transition-all outline-none"
+                className="w-full bg-black/40 border border-white/10 rounded-xl px-4 py-2.5 text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-indigo-500/30 focus:border-indigo-500 transition-all text-sm shadow-inner"
               />
             </div>
 
-            <div className="space-y-1">
-              <label className="text-xs font-medium text-gray-400 uppercase tracking-wider ml-1">Description (Optional)</label>
+            <div>
+              <label className="block text-[10px] font-bold uppercase tracking-wider text-gray-400 mb-1.5 flex items-center gap-1.5">
+                <FileText size={12} className="text-indigo-400" />
+                Description (Optional)
+              </label>
               <textarea
                 value={description}
                 onChange={(e) => setDescription(e.target.value)}
-                placeholder="What is this team about?"
+                placeholder="What is this team working on?"
                 rows="3"
-                className="w-full bg-[#141414] text-white rounded-xl px-4 py-3 border border-white/10 focus:border-blue-500 focus:ring-1 focus:ring-blue-500 transition-all outline-none resize-none"
+                className="w-full bg-black/40 border border-white/10 rounded-xl px-4 py-2.5 text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-indigo-500/30 focus:border-indigo-500 transition-all text-sm resize-none shadow-inner"
               />
             </div>
 
             <button
               type="submit"
               disabled={loading || !name.trim()}
-              className="w-full bg-blue-600 hover:bg-blue-700 text-white font-medium py-2.5 rounded-xl transition-colors disabled:opacity-50 disabled:cursor-not-allowed mt-2"
+              className="w-full bg-gradient-to-r from-indigo-500 via-purple-500 to-pink-500 hover:opacity-95 text-white font-bold py-3 rounded-xl transition-all duration-300 shadow-[0_4px_20px_rgba(99,102,241,0.25)] hover:scale-[1.01] active:scale-[0.99] disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:scale-100 disabled:hover:shadow-none cursor-pointer text-xs mt-2"
             >
               {loading ? 'Creating...' : 'Create Team'}
             </button>

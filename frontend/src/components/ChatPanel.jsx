@@ -1,4 +1,5 @@
 import { useState, useEffect, useRef } from "react";
+import { X, Send, Trash2, ShieldAlert, MessageSquare } from "lucide-react";
 
 export default function ChatPanel({ socket, sessionId, onClose, messages, isAdmin, isChatEnabled }) {
   const [inputMessage, setInputMessage] = useState("");
@@ -33,13 +34,11 @@ export default function ChatPanel({ socket, sessionId, onClose, messages, isAdmi
   };
 
   return (
-    <div className="flex flex-col h-full bg-[#1e1e1e] text-white w-full">
+    <div className="flex flex-col h-full bg-transparent text-white w-full">
       {/* Header */}
-      <div className="flex justify-between items-center p-3 border-b border-white/20 bg-[#252525]">
-        <h3 className="text-lg font-semibold flex items-center gap-2">
-          <svg className="w-5 h-5 text-blue-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 10h.01M12 10h.01M16 10h.01M9 16H5a2 2 0 01-2-2V6a2 2 0 012-2h14a2 2 0 012 2v8a2 2 0 01-2 2h-5l-5 5v-5z" />
-          </svg>
+      <div className="flex justify-between items-center p-4 border-b border-white/10 shrink-0">
+        <h3 className="text-white font-black tracking-tight text-sm flex items-center gap-2">
+          <MessageSquare size={16} className="text-indigo-400" />
           Session Chat
         </h3>
         <div className="flex items-center gap-2">
@@ -47,34 +46,43 @@ export default function ChatPanel({ socket, sessionId, onClose, messages, isAdmi
             <>
               <button
                 onClick={handleToggleChat}
-                className={`text-xs px-2 py-1 rounded transition-colors ${isChatEnabled ? 'bg-red-500 hover:bg-red-600' : 'bg-green-500 hover:bg-green-600'}`}
+                className={`text-[10px] font-extrabold px-2.5 py-1.5 rounded-lg border transition-all cursor-pointer ${
+                  isChatEnabled 
+                    ? 'bg-rose-500/10 border-rose-500/20 text-rose-400 hover:bg-rose-500 hover:text-white hover:border-transparent' 
+                    : 'bg-emerald-500/10 border-emerald-500/20 text-emerald-400 hover:bg-emerald-500 hover:text-white hover:border-transparent'
+                }`}
               >
-                {isChatEnabled ? 'Disable' : 'Enable'}
+                {isChatEnabled ? 'Disable Chat' : 'Enable Chat'}
               </button>
               <button
                 onClick={handleClearChats}
-                className="text-xs px-2 py-1 rounded bg-gray-600 hover:bg-gray-500 transition-colors"
+                title="Clear Chat History"
+                className="p-1.5 rounded-lg bg-white/5 border border-white/10 text-gray-300 hover:text-white hover:bg-white/10 transition-all cursor-pointer"
               >
-                Clear
+                <Trash2 size={13} />
               </button>
             </>
           )}
           <button
             onClick={onClose}
-            className="text-gray-400 hover:text-white transition-colors ml-2"
+            className="text-gray-400 hover:text-white p-1 rounded-lg hover:bg-white/5 transition-colors cursor-pointer"
           >
-            <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-            </svg>
+            <X size={16} />
           </button>
         </div>
       </div>
 
       {/* Messages Area */}
-      <div className="flex-1 overflow-y-auto p-4 space-y-4">
+      <div className="flex-1 overflow-y-auto p-4 space-y-4 scrollbar-thin scrollbar-thumb-white/10 scrollbar-track-transparent">
         {messages.length === 0 ? (
-          <div className="text-center text-gray-500 text-sm mt-10">
-            No messages yet. Say hello!
+          <div className="text-center py-12 flex flex-col items-center justify-center h-full opacity-60">
+            <div className="w-14 h-14 bg-gradient-to-tr from-indigo-500/10 to-purple-500/10 border border-indigo-500/20 text-indigo-400 rounded-2xl flex items-center justify-center mb-4 shadow-[0_8px_32px_rgba(99,102,241,0.08)]">
+              <MessageSquare size={24} className="text-indigo-400" />
+            </div>
+            <h4 className="text-xs font-bold text-gray-200">No Messages Yet</h4>
+            <p className="text-[10px] text-gray-500 mt-1 max-w-[180px] mx-auto leading-relaxed">
+              Introduce yourself and start collaborating with your team!
+            </p>
           </div>
         ) : (
           messages.map((msg, index) => {
@@ -85,15 +93,15 @@ export default function ChatPanel({ socket, sessionId, onClose, messages, isAdmi
                 className={`flex flex-col ${isMe ? "items-end" : "items-start"}`}
               >
                 {!isMe && (
-                  <span className="text-xs text-gray-400 mb-1 ml-1 font-semibold">
+                  <span className="text-[10px] text-indigo-400 mb-1.5 ml-1 font-extrabold tracking-wide">
                     {msg.username}
                   </span>
                 )}
                 <div
-                  className={`px-3 py-2 rounded-xl text-sm max-w-[85%] break-words shadow-sm ${
+                  className={`px-3.5 py-2.5 rounded-2xl text-xs max-w-[85%] break-words shadow-sm leading-relaxed ${
                     isMe
-                      ? "bg-blue-600 text-white rounded-tr-none"
-                      : "bg-[#2d2d2d] text-gray-100 rounded-tl-none border border-white/10"
+                      ? "bg-gradient-to-r from-indigo-500 via-purple-500 to-pink-500 text-white rounded-tr-none shadow-[0_4px_12px_rgba(99,102,241,0.2)]"
+                      : "bg-white/5 border border-white/10 text-gray-100 rounded-tl-none shadow-inner"
                   }`}
                 >
                   {msg.message}
@@ -106,24 +114,22 @@ export default function ChatPanel({ socket, sessionId, onClose, messages, isAdmi
       </div>
 
       {/* Input Area */}
-      <div className="p-3 border-t border-white/20 bg-[#252525]">
+      <div className="p-4 border-t border-white/10 shrink-0">
         <form onSubmit={sendMessage} className="flex gap-2">
           <input
             type="text"
             value={inputMessage}
             onChange={(e) => setInputMessage(e.target.value)}
             disabled={!isChatEnabled && !isAdmin}
-            placeholder={!isChatEnabled && !isAdmin ? "Chat is disabled by admin" : "Type a message..."}
-            className="flex-1 bg-[#1a1a1a] text-white text-sm rounded-lg px-3 py-2 border border-white/10 focus:outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500 transition-all placeholder-gray-500 disabled:opacity-50 disabled:cursor-not-allowed"
+            placeholder={!isChatEnabled && !isAdmin ? "Chat has been disabled" : "Type a message..."}
+            className="flex-1 bg-black/40 border border-white/10 rounded-xl px-4 py-2.5 text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-indigo-500/30 focus:border-indigo-500 text-xs shadow-inner disabled:opacity-50 disabled:cursor-not-allowed"
           />
           <button
             type="submit"
             disabled={!inputMessage.trim() || (!isChatEnabled && !isAdmin)}
-            className="bg-blue-600 text-white p-2 rounded-lg hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors flex items-center justify-center"
+            className="bg-gradient-to-r from-indigo-500 via-purple-500 to-pink-500 hover:opacity-95 text-white p-2.5 rounded-xl hover:scale-[1.02] active:scale-[0.98] disabled:opacity-50 disabled:cursor-not-allowed transition-all flex items-center justify-center cursor-pointer shadow-[0_4px_12px_rgba(99,102,241,0.2)]"
           >
-            <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 19l9 2-9-18-9 18 9-2zm0 0v-8" />
-            </svg>
+            <Send size={14} />
           </button>
         </form>
       </div>

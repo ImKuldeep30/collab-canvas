@@ -8,6 +8,7 @@ const { v4: uuidv4 } = require("uuid");
 const connectDB = require("./config/db");
 const authRoutes = require("./routes/authroutes");
 const teamRoutes = require("./routes/teamRoutes");
+const SessionData = require("./models/SessionData");
 
 const app = express();
 const server = http.createServer(app);
@@ -32,6 +33,7 @@ app.use("/api/teams", teamRoutes);
 // --- WebSocket Logic Starts Here ---
 
 const sessions = new Map();
+const sessionDrawingData = new Map(); // Store drawing data for each session
 
 io.on("connection", (socket) => {
   console.log("User connected:", socket.id);
@@ -43,10 +45,12 @@ io.on("connection", (socket) => {
 
   socket.on("invite-team-to-session", (data) => {
     const { sessionId, teamName, adminName, members } = data;
-    console.log("Inviting team members:", members, "to session:", sessionId);
+    const session = sessions.get(sessionId);
+    const teamId = session?.teamId || null;
+    console.log("Inviting team members:", members, "to session:", sessionId, "Team:", teamId);
     if(Array.isArray(members)) {
       members.forEach((memberId) => {
-        io.to("user_room_" + memberId).emit("team-session-started", { sessionId, teamName, adminName });
+        io.to("user_room_" + memberId).emit("team-session-started", { sessionId, teamName, adminName, teamId });
       });
     }
   });
@@ -54,6 +58,9 @@ io.on("connection", (socket) => {
   socket.on("create-session", (data, callback) => {
     const password = data?.password || null;
     const username = data?.username || "Admin";
+    const teamId = data?.teamId || null;
+    const teamName = data?.teamName || null;
+    const userId = data?.userId || null;
     const sessionId = uuidv4().substring(0, 8); 
     socket.join(sessionId);
     
@@ -64,10 +71,48 @@ io.on("connection", (socket) => {
       admin: socket.id,
       users: usersMap, 
       password,
-      chatEnabled: true
+      chatEnabled: true,
+      teamId,
+      teamName,
+      userId,
+      createdAt: new Date()
     });
-    console.log(`Session ${sessionId} created by ${socket.id} (Admin)`);
+    sessionDrawingData.set(sessionId, []);
+    console.log(`Session ${sessionId} created by ${socket.id} (Admin) - Team: ${teamName || 'None'}`);
     if (callback) callback({ sessionId });
+  });
+
+  socket.on("load-previous-session", (data, callback) => {
+    const { teamId } = data || {};
+    if (!teamId) {
+      if (callback) callback({ success: false, message: "No teamId provided" });
+      return;
+    }
+
+    SessionData.findOne({ teamId }).sort({ lastModified: -1 }).then(sessionData => {
+      if (sessionData) {
+        if (callback) callback({ 
+          success: true, 
+          drawingData: sessionData.drawingData || [],
+          canvasWidth: sessionData.canvasWidth,
+          canvasHeight: sessionData.canvasHeight,
+          message: "Previous session data loaded"
+        });
+      } else {
+        if (callback) callback({ success: true, drawingData: [], message: "No previous session found" });
+      }
+    }).catch(err => {
+      console.error("Error loading previous session:", err);
+      if (callback) callback({ success: false, message: "Error loading previous session" });
+    });
+  });
+
+  socket.on("save-drawing-data", (data) => {
+    const { sessionId, drawingData } = data || {};
+    if (sessionId && Array.isArray(drawingData)) {
+      sessionDrawingData.set(sessionId, drawingData);
+      console.log(`Drawing data saved for session ${sessionId} - ${drawingData.length} strokes`);
+    }
   });
 
   socket.on("join-request", (data, callback) => {
@@ -165,11 +210,37 @@ io.on("connection", (socket) => {
     }
   });
 
-  socket.on("terminate-session", (sessionId) => {
+  socket.on("terminate-session", (sessionId, data) => {
     const session = sessions.get(sessionId);
     if (session && session.admin === socket.id) {
+      // If this is a team session, save the drawing data to database
+      if (session.teamId) {
+        const drawingData = sessionDrawingData.get(sessionId) || [];
+        const canvasWidth = data?.canvasWidth || 1920;
+        const canvasHeight = data?.canvasHeight || 1080;
+        
+        SessionData.findOneAndUpdate(
+          { teamId: session.teamId },
+          {
+            teamId: session.teamId,
+            teamName: session.teamName,
+            drawingData: drawingData,
+            canvasWidth: canvasWidth,
+            canvasHeight: canvasHeight,
+            lastModified: new Date(),
+            createdBy: session.userId,
+          },
+          { upsert: true, new: true }
+        ).catch(err => {
+          console.error("Error saving session data:", err);
+        });
+        
+        console.log(`Team session ${sessionId} (Team: ${session.teamName}) data saved to database`);
+      }
+      
       io.to(sessionId).emit("session-terminated", { message: "The admin has terminated the session." });
       io.in(sessionId).socketsLeave(sessionId);
+      sessionDrawingData.delete(sessionId);
       sessions.delete(sessionId);
     }
   });
@@ -196,6 +267,21 @@ io.on("connection", (socket) => {
     const session = sessions.get(data.sessionId);
     if (session && session.users.has(socket.id)) {
       if (session.users.get(socket.id).canDraw) {
+        // Store drawing data if it's a team session
+        if (session.teamId && sessionDrawingData.has(data.sessionId)) {
+          const currentDrawingData = sessionDrawingData.get(data.sessionId) || [];
+          
+          // Store Excalidraw elements directly
+          if (Array.isArray(data.elements)) {
+            // Replace or merge elements based on their IDs
+            const elementMap = new Map(currentDrawingData.map(el => [el.id, el]));
+            data.elements.forEach(el => {
+              elementMap.set(el.id, el);
+            });
+            sessionDrawingData.set(data.sessionId, Array.from(elementMap.values()));
+          }
+        }
+        
         socket.to(data.sessionId).emit("draw", data);
       }
     }
@@ -211,6 +297,10 @@ io.on("connection", (socket) => {
     const session = sessions.get(sessionId);
     if (session && session.users.has(socket.id)) {
       if (session.users.get(socket.id).canDraw) {
+        // Clear drawing data if it's a team session
+        if (session.teamId && sessionDrawingData.has(sessionId)) {
+          sessionDrawingData.set(sessionId, []);
+        }
         socket.to(sessionId).emit("clear");
       }
     }

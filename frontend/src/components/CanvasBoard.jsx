@@ -3,7 +3,7 @@ import { Excalidraw, MainMenu } from "@excalidraw/excalidraw";
 
 import "@excalidraw/excalidraw/index.css";
 
-export default function CanvasBoard({ socket, sessionId, canDraw = true }) {
+export default function CanvasBoard({ socket, sessionId, canDraw = true, previousSessionData = null, drawingData = [], setDrawingData = null }) {
   const [elements, setElements] = useState([]);
   const excalidrawRef = useRef(null);
   const collaboratorsRef = useRef(new Map());
@@ -93,6 +93,21 @@ export default function CanvasBoard({ socket, sessionId, canDraw = true }) {
       socket.off("user-left", handleUserLeft);
     };
   }, [socket, sessionId]);
+
+  // Load previous session data when available
+  useEffect(() => {
+    if (previousSessionData?.drawingData && previousSessionData.drawingData.length > 0 && excalidrawRef.current) {
+      const previousElements = previousSessionData.drawingData;
+      localElementsRef.current = previousElements;
+      setElements(previousElements);
+      excalidrawRef.current.updateScene({ elements: previousElements });
+      
+      if (setDrawingData) {
+        setDrawingData(previousElements);
+      }
+    }
+  }, [previousSessionData, setDrawingData]);
+
 
   const handleChange = (newElements, appState) => {
     if (!socket || !sessionId) return;
