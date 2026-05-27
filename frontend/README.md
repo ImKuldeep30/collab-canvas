@@ -1,91 +1,107 @@
-# Canvas Collaboration App - Frontend Overview
+# CoCanvas Frontend 🎨
 
-Welcome to the frontend of the Canvas Collaboration App! This guide is designed to help anyone—whether you're a developer joining the project or someone just curious—understand how the frontend is built, structured, and how it talks to our backend server.
-
----
-
-## 🏗️ Technology Stack
-
-- **React.js**: The core library used for building the user interface.
-- **Vite**: A fast build tool that bundles our code and serves it during development.
-- **Tailwind CSS**: A utility-first CSS framework for quickly styling components right in the code.
-- **Socket.io-client**: The library used to establish a persistent, real-time connection with our backend for live drawing and chatting.
+Welcome to the frontend of **CoCanvas**—a premium, high-fidelity, glassmorphic real-time collaborative drawing workspace. This codebase handles the visual canvas boards, collaborative group chat interface, interactive participant management, team dashboards, and the security onboarding flow.
 
 ---
 
-## 📁 Folder Structure Explained
-
-Here's an easy-to-understand breakdown of what's inside the `src/` directory:
-
-### `src/components/`
-This folder holds the reusable "building blocks" (components) of the app. By splitting the app into components, the code becomes much easier to read and maintain.
-- **`CanvasBoard.jsx`**: The core drawing area. It captures your mouse movements and sends them to the server.
-- **`Navbar.jsx`**: The top navigation bar containing the buttons for teams, joining sessions, chatting, and settings.
-- **`ChatPanel.jsx` & `ParticipantsPanel.jsx`**: The sliding panels on the right side for messaging inside a session and managing who is in the room.
-- **Modals (e.g., `JoinSessionModal.jsx`, `CreateSessionModal.jsx`, `MyTeamsModal.jsx`, `UpdateProfileModal.jsx`)**: Pop-up boxes that handle smaller tasks like creating a team, checking active requests, or starting sessions.
-
-### `src/pages/`
-These are the main "views" or "screens" of the application.
-- **`Home.jsx`**: The main workspace where the canvas, chat, and participants panels all live together. It's the control center for active sessions.
-- **Authentication Pages (`Login.jsx`, `Register.jsx`, `Forget.jsx`)**: The screens users see when they are signing up, logging in, or resetting passwords.
-
-### `src/App.jsx`
-The "traffic controller" of the apps. It decides which page (`Home`, `Login`, etc.) to show based on the user's current URL and whether they are logged in or not.
+## 🚀 Tech Stack & Design Aesthetics
+* **Core Framework**: React 19 (TypeScript/JS) powered by Vite.
+* **Canvas Engine**: Integrated Excalidraw SDK for high-performance responsive vector rendering.
+* **Styling**: Vanilla CSS combined with custom glassmorphic Tailwind CSS patterns.
+* **Real-time Engine**: Socket.io-Client for sub-millisecond drawing synchronization and team coordination.
+* **Typography**: Modern typography utilizing Google Fonts (Inter, Outfit, sans-serif).
+* **Iconography**: Lucide React.
+* **API Requests**: Axios.
 
 ---
 
-## 🔌 How the Frontend Connects to the Backend
+## 🛠️ Local Installation & Development
 
-The frontend communicates with the unified backend (running on port `3000`) in two completely different ways: **REST APIs** (for simple, one-time requests) and **WebSockets** (for continuous, real-time data).
+To spin up the frontend on your local development machine:
 
-### 1. The HTTP REST API (Traditional Requests)
-**Used for:** Logging in, registering, creating teams, and fetching data.
-**How it works:** Just like ordering food online, the frontend sends a single request to the backend and waits for a response.
-- **Example Flow**: When a user fills out the `Login.jsx` form and clicks "Submit", the frontend fires off a `POST` request to `http://localhost:3000/api/auth/login`. 
-- **Security**: Upon successful login, the backend responds with a secure "Token" and the user's details. The frontend saves this locally in your browser's `localStorage`. This token proves you are logged in for future actions.
+### 1. Prerequisites
+Ensure you have **Node.js (v18 or higher)** installed.
 
-### 2. WebSockets (Real-Time Communication via Socket.io)
-**Used for:** Live drawing on the canvas, instant chat messages, live cursor movements, and instant notifications (like when an admin starts a team session).
-**How it works:** Instead of a one-time request, a WebSocket creates an open "phone line" between the frontend and the backend. Both sides can send data back and forth instantly without having to ask first.
+### 2. Install Dependencies
+Navigate to the `frontend/` directory and install the required modules:
+```bash
+cd frontend
+npm install
+```
 
-#### The Lifecycle of the WebSocket Connection:
-1. **Connecting**: inside `Home.jsx`, as soon as the page loads (and the user is logged in), the frontend dials the backend using: `const newSocket = io("http://localhost:3000");`
-2. **Registering**: Once connected, the frontend says, *"Hey, I am user X!"* (`socket.emit("register-user", ...)`). The server creates a private room perfectly tailored for that specific user.
-3. **Collaborating (Drawing/Chatting)**: 
-   - When you draw a line in `CanvasBoard.jsx`, it emits a `"draw"` event with coordinates to the backend. The backend immediately shouts out those coordinates to everyone else in your active session.
-   - When you send a message in `ChatPanel.jsx`, it emits a `"send-chat"` event, and the backend routes it to the other session participants.
-4. **Team Invites (The "Live Notification" Flow)**: 
-   - An admin clicks "Start Session" in `MyTeamsModal.jsx`. 
-   - The frontend emits `"invite-team-to-session"` along with the active `members` list.
-   - The backend catches this, looks up those specific members, and pushes a `"team-session-started"` event securely down their open WebSocket connections.
-   - The member's `Home.jsx` receives the event and instantly renders the "Join / Ignore" pop-up.
+### 3. Configure Environment Variables
+Create a `.env` file in your `frontend/` directory:
+```env
+# URL where your Express backend server is running (Local dev IP or localhost)
+VITE_BACKEND_URL=http://192.168.1.10:3000
+```
+> [!NOTE]
+> Setting this dynamic environment variable allows the compiled React code to fetch the correct backend address during local testing and deployment automatically.
 
----
-
-## 🔧 Deep Dive into Frontend Features
-
-### 🎨 Responsive & Themed UI
-Our frontend uses **Tailwind CSS** to build a fully custom, responsive, and dark-themed UI.
-- All styles are utility-based, making it easy to create consistent padding, margins, flex layouts, and typography.
-- We use the `lucide-react` library for consistent, lightweight SVG icons across buttons and Modals.
-
-### 📡 State Management & Hooks
-We rely purely on React's built-in hooks to manage state, doing away with the need for complex global state managers like Redux:
-- **`useState`**: Used everywhere to handle component-level state like checking if a modal is open, form inputs, or keeping track of the current `sessionId`.
-- **`useEffect`**: Crucial for firing off initial side effects. Most importantly, it's used in `Home.jsx` to establish the WebSocket connection when the user first opens the app and cleans it up when they disconnect or close the tab.
-- **Local Storage**: We utilize the browser's native `localStorage` mechanism to store the JWT string and User Profile JSON upon successful login, which persists their session.
-
-### 🛡️ Protected Routing
-In `App.jsx` (and commonly through `ProtectedRoute.jsx`), we wrap all routes that should be inaccessible to unverified guests.
-- **If they aren't logged in:** Any attempt to reach `/home` is instantly redirected to `/login`.
-- **If they are logged in:** Loading `/login` will safely reroute them back to `/home`.
+### 4. Run Development Server
+Launch the development server with host configuration so other devices on your local network (e.g., tablet, iPad) can test it:
+```bash
+npm run dev -- --host
+```
+* Your console will output:
+  * Local: `http://localhost:5173/`
+  * Network: `http://192.168.1.10:5173/`
 
 ---
 
-## 🏃 Commands to Run
+## 📂 Project Structure Directory
 
-To run the frontend locally:
-1. Open a terminal in the `frontend/` directory.
-2. Run `npm install` (to download the libraries if you haven't yet).
-3. Run `npm run dev` (to start the Vite local development server).
-4. The terminal will provide a `localhost` URL (usually `http://localhost:5173`) where you can view the app in your browser!
+```
+frontend/
+├── src/
+│   ├── components/            # Reusable UI Components
+│   │   ├── CanvasBoard.jsx     # Drawing board viewport
+│   │   ├── ChatPanel.jsx       # Collaborative session chat
+│   │   ├── CreateTeamModal.jsx # New collaborative team interface
+│   │   ├── JoinTeamModal.jsx   # Join active team session modal
+│   │   ├── MyTeamsModal.jsx    # User's active team workspace list
+│   │   └── Navbar.jsx          # Glassmorphic global navigation bar
+│   ├── pages/                 # Full Page Routing targets
+│   │   ├── Landing.jsx         # Signature immersive dashboard landing
+│   │   ├── Login.jsx           # Glassmorphic login authentication
+│   │   ├── Register.jsx        # Glassmorphic user signup onboarding
+│   │   ├── Forget.jsx          # Secure password reset trigger
+│   │   └── Home.jsx            # Dynamic workspace dashboard page
+│   ├── index.css               # Global theme styles
+│   └── main.jsx               # Application entry point
+├── package.json               # Package dependencies & scripts
+└── vite.config.js             # Vite compiler config parameters
+```
+
+---
+
+## 📖 Available Package Scripts
+
+Inside the `frontend/` directory, you can run:
+
+* `npm run dev`: Starts Vite local server in watch-mode.
+* `npm run build`: Compiles and optimizes your React code into modular JS and CSS inside the `dist/` directory for production deployment.
+* `npm run lint`: Analyzes and resolves code syntax and warning anomalies with ESLint.
+* `npm run preview`: Runs a local server to test the production build directory (`dist/`) before web hosting.
+
+---
+
+## ☁️ Production Deployment (Vercel)
+
+The frontend is fully optimized to be deployed to **Vercel** with a single click:
+
+1. Connect your GitHub repository to your **Vercel** account.
+2. In the import settings:
+   * **Root Directory**: Select the `frontend` folder.
+   * **Framework Preset**: Select **Vite** (detected automatically).
+3. **Environment Variables**: Add your backend target server URL:
+   * **Key**: `VITE_BACKEND_URL`
+   * **Value**: `https://your-backend.onrender.com` (Use `http://[Your-Local-IP]:3000` for local hybrid testing).
+4. Click **Deploy**!
+
+---
+
+## 🔒 Mixed Content & Browser Security Tip
+When hosting your frontend on Vercel over `HTTPS`:
+* Browsers will block insecure standard `HTTP` connections (Mixed Content block).
+* Ensure your backend is hosted over `HTTPS` (Render.com provides this out of the box), or test fully locally on your browser via `http://localhost:5173` to prevent network call rejections!
