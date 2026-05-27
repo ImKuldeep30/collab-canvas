@@ -16,7 +16,7 @@ const Register = () => {
 
   const submitHandler = async (e) => {
     e.preventDefault()
-    const BACKEND_URL = 'http://192.168.1.10:3000/api/auth/register';
+    const BACKEND_URL = (import.meta.env.VITE_BACKEND_URL || "http://192.168.1.10:3000") + '/api/auth/register';
     setLoading(true);
     setMessage("");
     try {

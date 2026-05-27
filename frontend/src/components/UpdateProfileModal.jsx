@@ -23,7 +23,7 @@ const UpdateProfileModal = ({ isOpen, onClose, user, setUser }) => {
 
     try {
       const token = localStorage.getItem("accessToken");
-      const res = await fetch("http://192.168.1.10:3000/api/auth/update-profile", {
+      const res = await fetch((import.meta.env.VITE_BACKEND_URL || "http://192.168.1.10:3000") + "/api/auth/update-profile", {
         method: "PUT",
         headers: {
           "Content-Type": "application/json",

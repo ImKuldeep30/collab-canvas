@@ -113,7 +113,7 @@ const Navbar = ({ socket, sessionId, setSessionId, isAdmin, setIsAdmin, onToggle
     try {
       const token = localStorage.getItem("accessToken");
       if (!token) return;
-      const res = await fetch("http://192.168.1.10:3000/api/teams/notifications", {
+      const res = await fetch((import.meta.env.VITE_BACKEND_URL || "http://192.168.1.10:3000") + "/api/teams/notifications", {
         headers: { Authorization: `Bearer ${token}` }
       });
       const data = await res.json();
@@ -162,7 +162,7 @@ const Navbar = ({ socket, sessionId, setSessionId, isAdmin, setIsAdmin, onToggle
           let token = localStorage.getItem("accessToken");
           if (!token) throw new Error("No token found");
           
-          let res = await fetch("http://192.168.1.10:3000/api/auth/me", {
+          let res = await fetch((import.meta.env.VITE_BACKEND_URL || "http://192.168.1.10:3000") + "/api/auth/me", {
             headers: {
               Authorization: `Bearer ${token}`
             }
@@ -171,7 +171,7 @@ const Navbar = ({ socket, sessionId, setSessionId, isAdmin, setIsAdmin, onToggle
           if (res.status === 401) {
             const refreshToken = localStorage.getItem("refreshToken");
             if (refreshToken) {
-              const refreshRes = await fetch("http://192.168.1.10:3000/api/auth/refresh-token", {
+              const refreshRes = await fetch((import.meta.env.VITE_BACKEND_URL || "http://192.168.1.10:3000") + "/api/auth/refresh-token", {
                 method: "POST",
                 headers: { "Content-Type": "application/json" },
                 body: JSON.stringify({ refreshToken })
@@ -182,7 +182,7 @@ const Navbar = ({ socket, sessionId, setSessionId, isAdmin, setIsAdmin, onToggle
                 token = refreshData.accessToken;
                 localStorage.setItem("accessToken", token);
                 
-                res = await fetch("http://192.168.1.10:3000/api/auth/me", {
+                res = await fetch((import.meta.env.VITE_BACKEND_URL || "http://192.168.1.10:3000") + "/api/auth/me", {
                   headers: {
                     Authorization: `Bearer ${token}`
                   }
@@ -230,7 +230,7 @@ const Navbar = ({ socket, sessionId, setSessionId, isAdmin, setIsAdmin, onToggle
     try {
       const token = localStorage.getItem("accessToken");
       if (token) {
-        await fetch("http://192.168.1.10:3000/api/auth/logout", {
+        await fetch((import.meta.env.VITE_BACKEND_URL || "http://192.168.1.10:3000") + "/api/auth/logout", {
           method: "POST",
           headers: {
             Authorization: `Bearer ${token}`
@@ -259,7 +259,7 @@ const Navbar = ({ socket, sessionId, setSessionId, isAdmin, setIsAdmin, onToggle
       localStorage.setItem("user", JSON.stringify({ ...user, canvasDarkMode: targetMode }));
 
       const token = localStorage.getItem("accessToken");
-      const res = await fetch("http://192.168.1.10:3000/api/auth/update-profile", {
+      const res = await fetch((import.meta.env.VITE_BACKEND_URL || "http://192.168.1.10:3000") + "/api/auth/update-profile", {
         method: "PUT",
         headers: {
           "Content-Type": "application/json",

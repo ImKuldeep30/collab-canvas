@@ -20,7 +20,7 @@ const CreateTeamModal = ({ isOpen, onClose }) => {
     try {
       const token = localStorage.getItem('accessToken');
       const response = await axios.post(
-        'http://192.168.1.10:3000/api/teams/create',
+        (import.meta.env.VITE_BACKEND_URL || "http://192.168.1.10:3000") + '/api/teams/create',
         { name, description },
         { headers: { Authorization: `Bearer ${token}` } }
       );

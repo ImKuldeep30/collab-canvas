@@ -22,7 +22,7 @@ const io = new Server(server, {
   maxHttpBufferSize: 1e7 // 10MB max packet size
 });
 
-const PORT = 3000;
+const PORT = process.env.PORT || 3000;
 
 connectDB();
 

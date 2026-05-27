@@ -21,7 +21,7 @@ const Login = () => {
 
   const submitHandler = async (e) => {
     e.preventDefault();
-    const BACKEND_URL = 'http://192.168.1.10:3000/api/auth/login';
+    const BACKEND_URL = (import.meta.env.VITE_BACKEND_URL || "http://192.168.1.10:3000") + '/api/auth/login';
     setLoading(true);
     setMessage("");
     try {

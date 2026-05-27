@@ -24,7 +24,7 @@ const NotificationsModal = ({ isOpen, onClose }) => {
     setError(null);
     try {
       const token = localStorage.getItem("accessToken");
-      const response = await axios.get("http://192.168.1.10:3000/api/teams/notifications", {
+      const response = await axios.get((import.meta.env.VITE_BACKEND_URL || "http://192.168.1.10:3000") + "/api/teams/notifications", {
         headers: { Authorization: `Bearer ${token}` }
       });
       setNotifications(response.data || []);

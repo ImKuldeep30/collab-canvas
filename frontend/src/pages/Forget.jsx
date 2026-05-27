@@ -14,7 +14,7 @@ const Forget = () => {
   const submitHandler = async (e) => {
     e.preventDefault();
     if (isSubmitted) return;
-    const BACKEND_URL = "http://192.168.1.10:3000/api/auth/forgot-password";
+    const BACKEND_URL = (import.meta.env.VITE_BACKEND_URL || "http://192.168.1.10:3000") + "/api/auth/forgot-password";
     setLoading(true);
     try {
       const response = await fetch(BACKEND_URL, {

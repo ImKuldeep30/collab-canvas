@@ -20,7 +20,7 @@ const JoinTeamModal = ({ isOpen, onClose }) => {
     try {
       const token = localStorage.getItem('accessToken');
       const response = await axios.post(
-        'http://192.168.1.10:3000/api/teams/join',
+        (import.meta.env.VITE_BACKEND_URL || "http://192.168.1.10:3000") + '/api/teams/join',
         { teamId },
         { headers: { Authorization: `Bearer ${token}` } }
       );

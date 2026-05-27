@@ -104,7 +104,7 @@ const MyTeamsModal = ({ isOpen, onClose, socket, sessionId, setSessionId, setIsA
     setError(null);
     try {
       const token = localStorage.getItem("accessToken");
-      const response = await axios.get("http://192.168.1.10:3000/api/teams/my-teams", {
+      const response = await axios.get((import.meta.env.VITE_BACKEND_URL || "http://192.168.1.10:3000") + "/api/teams/my-teams", {
         headers: { Authorization: `Bearer ${token}` }
       });
       setTeams(response.data || []);
@@ -209,7 +209,7 @@ const MyTeamsModal = ({ isOpen, onClose, socket, sessionId, setSessionId, setIsA
     setSavingDesc(true);
     try {
       const token = localStorage.getItem("accessToken");
-      const response = await axios.post("http://192.168.1.10:3000/api/teams/edit-description", 
+      const response = await axios.post((import.meta.env.VITE_BACKEND_URL || "http://192.168.1.10:3000") + "/api/teams/edit-description", 
         { teamId: selectedTeam.teamId, description: newDesc },
         { headers: { Authorization: `Bearer ${token}` } }
       );
@@ -227,7 +227,7 @@ const MyTeamsModal = ({ isOpen, onClose, socket, sessionId, setSessionId, setIsA
     setDeletingTeam(true);
     try {
       const token = localStorage.getItem("accessToken");
-      await axios.post("http://192.168.1.10:3000/api/teams/delete", 
+      await axios.post((import.meta.env.VITE_BACKEND_URL || "http://192.168.1.10:3000") + "/api/teams/delete", 
         { teamId: selectedTeam.teamId },
         { headers: { Authorization: `Bearer ${token}` } }
       );

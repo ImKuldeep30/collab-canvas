@@ -1,16 +1,10 @@
 const jwt = require("jsonwebtoken");
 const crypto = require("crypto");
 const User = require("../models/User");
-const nodemailer = require("nodemailer");
+const { Resend } = require("resend");
 
-// --- Helper: Setup Email Transporter ---
-const transporter = nodemailer.createTransport({
-  service: "gmail",
-  auth: {
-    user: process.env.EMAIL_USER,
-    pass: process.env.EMAIL_PASS,
-  },
-});
+// --- Helper: Setup Resend Client ---
+const resend = new Resend(process.env.RESEND_API_KEY);
 
 // front-end url for redirects; set via env or default to localhost:5173 (Vite)
 const FRONTEND_URL = process.env.FRONTEND_URL || "http://localhost:5173";
@@ -66,6 +60,56 @@ const getVerificationEmailTemplate = (name, url) => `
   </div>
 `;
 
+const getForgotPasswordEmailTemplate = (name, url) => `
+  <div style="background-color: #0a0a0c; padding: 45px 15px; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; text-align: center; color: #ffffff;">
+    <table align="center" border="0" cellpadding="0" cellspacing="0" width="100%" style="max-width: 480px; background-color: #121214; border: 1px solid rgba(255, 255, 255, 0.08); border-radius: 20px; overflow: hidden; box-shadow: 0 20px 40px rgba(0,0,0,0.5);">
+      <tr>
+        <td style="padding: 40px 32px; text-align: center;">
+          
+          <!-- CoCanvas Styled Brand Icon -->
+          <div style="margin-bottom: 24px; display: inline-block;">
+            <table align="center" border="0" cellpadding="0" cellspacing="0">
+              <tr>
+                <td style="background: linear-gradient(135deg, #6366f1 0%, #a855f7 100%); width: 50px; height: 50px; border-radius: 14px; text-align: center; vertical-align: middle; color: #ffffff; font-weight: 900; font-size: 22px; box-shadow: 0 4px 12px rgba(99,102,241,0.3);">
+                  C
+                </td>
+              </tr>
+            </table>
+          </div>
+          
+          <h2 style="color: #ffffff; font-size: 22px; font-weight: 800; margin: 0 0 8px 0; letter-spacing: -0.5px;">Password Reset Request</h2>
+          <p style="color: #818cf8; font-size: 14px; font-weight: 700; margin: 0 0 24px 0;">Hello ${name},</p>
+          
+          <p style="color: #9ca3af; font-size: 13px; line-height: 1.6; margin: 0 0 28px 0; font-weight: 500;">
+            We received a request to reset the password for your CoCanvas account. No problem, we've got you covered!
+          </p>
+          
+          <p style="color: #ffffff; font-size: 13px; line-height: 1.6; margin: 0 0 28px 0; font-weight: 500;">
+            Click the button below to choose a new password:
+          </p>
+          
+          <table align="center" border="0" cellpadding="0" cellspacing="0" style="margin: 0 auto 28px auto;">
+            <tr>
+              <td align="center">
+                <a href="${url}" target="_blank" style="font-size: 13px; color: #ffffff; text-decoration: none; border-radius: 12px; padding: 14px 28px; display: inline-block; font-weight: 700; background: linear-gradient(to right, #6366f1, #7c3aed); box-shadow: 0 4px 15px rgba(99, 102, 241, 0.3);">
+                  Reset Password
+                </a>
+              </td>
+            </tr>
+          </table>
+          
+          <p style="color: #6b7280; font-size: 11px; line-height: 1.5; margin: 0 0 24px 0; border-top: 1px solid rgba(255,255,255,0.05); padding-top: 24px; font-weight: 500;">
+            If you did not request a password reset, you can safely ignore this email. This link will expire in 1 hour.
+          </p>
+          
+          <p style="color: #4b5563; font-size: 10px; font-weight: 600; margin: 0;">
+            &copy; ${new Date().getFullYear()} CoCanvas. All rights reserved.
+          </p>
+        </td>
+      </tr>
+    </table>
+  </div>
+`;
 
 const parseCookies = (cookieHeader) => {
   const list = {};
@@ -146,7 +190,8 @@ exports.signup = async (req, res) => {
 
     // Send verification email
     const url = `http://localhost:3000/api/auth/verify-email/${verificationToken}`;
-    await transporter.sendMail({
+    await resend.emails.send({
+      from: process.env.EMAIL_FROM || "CoCanvas <onboarding@resend.dev>",
       to: user.email,
       subject: "Welcome to CoCanvas - Verify your Email",
       html: getVerificationEmailTemplate(user.name, url),
@@ -493,10 +538,11 @@ exports.forgotPassword = async (req, res) => {
     await user.save();
 
     const url = `http://localhost:3000/api/auth/reset-password/${resetToken}`;
-    await transporter.sendMail({
+    await resend.emails.send({
+      from: process.env.EMAIL_FROM || "CoCanvas <onboarding@resend.dev>",
       to: user.email,
-      subject: "Password Reset",
-      html: `Click <a href="${url}">here</a> to reset your password.`,
+      subject: "Password Reset Request | CoCanvas",
+      html: getForgotPasswordEmailTemplate(user.name, url),
     });
 
     res.json({ message: "Password reset link sent to email" });
@@ -812,7 +858,8 @@ exports.resendVerificationEmail = async (req, res) => {
 
     // Send verification email
     const url = `http://localhost:3000/api/auth/verify-email/${verificationToken}`;
-    await transporter.sendMail({
+    await resend.emails.send({
+      from: process.env.EMAIL_FROM || "CoCanvas <onboarding@resend.dev>",
       to: user.email,
       subject: "Verify your Email | CoCanvas",
       html: getVerificationEmailTemplate(user.name, url),

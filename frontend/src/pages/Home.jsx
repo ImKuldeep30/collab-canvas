@@ -42,7 +42,7 @@ export default function Home() {
       try {
         const token = localStorage.getItem("accessToken");
         if (!token) return;
-        const res = await fetch("http://192.168.1.10:3000/api/auth/me", {
+        const res = await fetch((import.meta.env.VITE_BACKEND_URL || "http://192.168.1.10:3000") + "/api/auth/me", {
           headers: { Authorization: `Bearer ${token}` }
         });
         if (res.ok) {
@@ -69,7 +69,7 @@ export default function Home() {
     setAlertConfig({ isOpen: true, title, message });
   };
   useEffect(() => {
-    const newSocket = io("http://192.168.1.10:3000"); // Socket connection available only after successful login
+    const newSocket = io(import.meta.env.VITE_BACKEND_URL || (import.meta.env.VITE_BACKEND_URL || "http://192.168.1.10:3000") + ''); // Socket connection available only after successful login
     setSocket(newSocket);
 
     const user = JSON.parse(localStorage.getItem("user") || "{}");
