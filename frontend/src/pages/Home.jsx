@@ -5,7 +5,6 @@ import Navbar from "../components/Navbar";
 import ChatPanel from "../components/ChatPanel";
 import ParticipantsPanel from "../components/ParticipantsPanel";
 import AlertModal from "../components/AlertModal";
-import SummarizeModal from "../components/SummarizeModal";
 
 export default function Home() {
   const [socket, setSocket] = useState(null);
@@ -26,7 +25,6 @@ export default function Home() {
   const [isAdminLeft, setIsAdminLeft] = useState(false);
   const [adminLeftMessage, setAdminLeftMessage] = useState("");
   const [myTeams, setMyTeams] = useState([]);
-  const [isSummarizeOpen, setIsSummarizeOpen] = useState(false);
   const ignoredSessionsRef = useRef(new Set());
   const canvasContainerRef = useRef(null);
 
@@ -308,20 +306,6 @@ export default function Home() {
             setDrawingData={setDrawingData}
           />
           
-          {/* Summarize Canvas Button — always visible when canvas is mounted */}
-          <button
-            onClick={() => setIsSummarizeOpen(true)}
-            className="absolute top-4 right-4 flex items-center gap-1.5 px-3 py-1.5 bg-[#0f0f12]/80 backdrop-blur-md border border-indigo-500/30 text-indigo-300 hover:text-white hover:border-indigo-400/60 hover:bg-indigo-500/10 rounded-xl text-[11px] font-bold transition-all z-50 shadow-lg cursor-pointer group"
-            title="Summarize a selected canvas area with Gemini AI"
-          >
-            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" className="text-indigo-400 group-hover:text-white transition-colors">
-              <path d="M12 2L2 7l10 5 10-5-10-5z"/>
-              <path d="M2 17l10 5 10-5"/>
-              <path d="M2 12l10 5 10-5"/>
-            </svg>
-            Summarize
-          </button>
-
           {/* Chat Toggle Button (Only visible if in session but chat is closed) */}
           {sessionId && !isChatOpen && (
             <button
@@ -435,11 +419,7 @@ export default function Home() {
           </div>
         </div>
       )}
-      <SummarizeModal
-        isOpen={isSummarizeOpen}
-        onClose={() => setIsSummarizeOpen(false)}
-        canvasContainerRef={canvasContainerRef}
-      />
+
       <AlertModal 
         isOpen={alertConfig.isOpen} 
         title={alertConfig.title} 
