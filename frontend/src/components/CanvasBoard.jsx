@@ -1,11 +1,14 @@
 import { useState, useEffect, useRef } from "react";
 import { Excalidraw, MainMenu } from "@excalidraw/excalidraw";
+import { Sliders, ChevronLeft } from "lucide-react";
 
 import "@excalidraw/excalidraw/index.css";
 
-export default function CanvasBoard({ socket, sessionId, canDraw = true, previousSessionData = null, drawingData = [], setDrawingData = null }) {
+export default function CanvasBoard({ socket, sessionId, canDraw = true, previousSessionData = null, drawingData = [], setDrawingData = null, canvasDarkMode = false }) {
   const [elements, setElements] = useState([]);
   const [excalidrawAPI, setExcalidrawAPI] = useState(null);
+  const [propertiesCollapsed, setPropertiesCollapsed] = useState(false);
+  const [activeTool, setActiveTool] = useState("selection");
   const excalidrawRef = useRef(null);
   const collaboratorsRef = useRef(new Map());
   const localElementsRef = useRef([]);
@@ -147,6 +150,9 @@ export default function CanvasBoard({ socket, sessionId, canDraw = true, previou
 
 
   const handleChange = (newElements, appState) => {
+    if (appState?.activeTool?.type) {
+      setActiveTool(appState.activeTool.type);
+    }
     if (!socket || !sessionId) return;
 
     setElements(newElements);
@@ -231,10 +237,37 @@ export default function CanvasBoard({ socket, sessionId, canDraw = true, previou
      });
   };
 
+  const hasPropertiesPanel = canDraw && !["selection", "hand", "eraser"].includes(activeTool);
+
   return (
-    <div style={{ height: "100%", width: "100%" }}>
+    <div 
+      className={`excalidraw-container relative ${propertiesCollapsed ? 'properties-collapsed' : ''}`} 
+      style={{ height: "100%", width: "100%" }}
+    >
+      {hasPropertiesPanel && (
+        <button
+          onClick={() => setPropertiesCollapsed(!propertiesCollapsed)}
+          className="absolute z-[5] flex items-center justify-center p-2 rounded-xl bg-[#121214]/90 hover:bg-[#121214] border border-white/10 text-indigo-400 hover:text-white transition-all duration-300 shadow-xl cursor-pointer active:scale-95 hover:border-white/20 select-none"
+          style={{
+            left: propertiesCollapsed ? "12px" : "216px",
+            top: "135px",
+            transition: "left 0.3s cubic-bezier(0.4, 0, 0.2, 1)"
+          }}
+          title={propertiesCollapsed ? "Show Properties Panel" : "Hide Properties Panel"}
+        >
+          {propertiesCollapsed ? (
+            <div className="flex items-center gap-1.5 px-1.5 py-0.5">
+              <Sliders size={12} className="animate-pulse text-indigo-400" />
+              <span className="text-[10px] font-black uppercase tracking-wider text-gray-200">Show Styling</span>
+            </div>
+          ) : (
+            <ChevronLeft size={14} />
+          )}
+        </button>
+      )}
       <Excalidraw
         viewModeEnabled={!canDraw}
+        theme={canvasDarkMode ? "dark" : "light"}
         excalidrawAPI={(api) => {
           excalidrawRef.current = api;
           if (api) {
@@ -255,6 +288,7 @@ export default function CanvasBoard({ socket, sessionId, canDraw = true, previou
         UIOptions={{
           canvasActions: {
             help: false,
+            toggleTheme: false,
           }
         }}
       >
@@ -265,7 +299,6 @@ export default function CanvasBoard({ socket, sessionId, canDraw = true, previou
           <MainMenu.DefaultItems.SaveAsImage />
           <MainMenu.DefaultItems.ClearCanvas />
           <MainMenu.Separator />
-          <MainMenu.DefaultItems.ToggleTheme />
           <MainMenu.DefaultItems.ChangeCanvasBackground />
         </MainMenu>
       </Excalidraw>

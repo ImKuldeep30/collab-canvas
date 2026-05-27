@@ -27,6 +27,10 @@ const userSchema = new mongoose.Schema({
 
     refreshToken: String,
     tokenBlacklist: [String], // Store blacklisted access tokens
+    canvasDarkMode: {
+        type: Boolean,
+        default: false
+    },
 }, { timestamps: true }); 
 
 // Hash password before saving

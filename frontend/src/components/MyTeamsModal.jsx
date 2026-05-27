@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from "react";
 import { X, Users, ShieldAlert, ArrowLeft, Check, UserMinus, Video, Sparkles, Copy, Mail, Pencil, Trash2, Crown } from "lucide-react";
 import axios from "axios";
+import AlertModal from "./AlertModal";
 
 const MyTeamsModal = ({ isOpen, onClose, socket, sessionId, setSessionId, setIsAdmin, setTeamInfo, setPreviousSessionData, setDrawingData, setChatMessages }) => {
   const [teams, setTeams] = useState([]);
@@ -17,11 +18,20 @@ const MyTeamsModal = ({ isOpen, onClose, socket, sessionId, setSessionId, setIsA
   const [isConfirmingDelete, setIsConfirmingDelete] = useState(false);
   const [deletingTeam, setDeletingTeam] = useState(false);
   const [memberToKick, setMemberToKick] = useState(null);
+  const [showDurationSelect, setShowDurationSelect] = useState(false);
+  const [selectedDuration, setSelectedDuration] = useState(30);
+  const [alertConfig, setAlertConfig] = useState({ isOpen: false, title: "Notification", message: "", type: "alert" });
+
+  const showAlert = (title, message, type = "alert") => {
+    setAlertConfig({ isOpen: true, title, message, type });
+  };
 
   useEffect(() => {
     setIsEditingDesc(false);
     setIsConfirmingDelete(false);
     setMemberToKick(null);
+    setShowDurationSelect(false);
+    setAlertConfig({ isOpen: false, title: "Notification", message: "", type: "alert" });
   }, [selectedTeam]);
 
   const currentUser = (() => {
@@ -39,6 +49,55 @@ const MyTeamsModal = ({ isOpen, onClose, socket, sessionId, setSessionId, setIsA
       setSelectedTeam(null);
     }
   }, [isOpen]);
+
+  const startTeamSession = (duration) => {
+    if (sessionId || !selectedTeam) return;
+    const username = currentUser.name || "Admin";
+    socket.emit("create-session", { 
+      password: null, 
+      username,
+      teamId: selectedTeam.teamId,
+      teamName: selectedTeam.name,
+      userId: currentUser.id || currentUser._id,
+      duration: duration
+    }, (response) => {
+      setSessionId(response.sessionId);
+      setIsAdmin(true);
+      if (setTeamInfo) {
+        setTeamInfo({
+          sessionId: response.sessionId,
+          teamId: selectedTeam.teamId,
+          teamName: selectedTeam.name,
+          adminName: username
+        });
+      }
+      
+      // Load previous session data for the team if any exists
+      if (setPreviousSessionData && setDrawingData) {
+        socket.emit("load-previous-session", { teamId: selectedTeam.teamId }, (sessionRes) => {
+          if (sessionRes && sessionRes.success) {
+            if (sessionRes.drawingData) {
+              setPreviousSessionData(sessionRes);
+              setDrawingData(sessionRes.drawingData);
+            }
+            if (sessionRes.chatHistory && setChatMessages) {
+              setChatMessages(sessionRes.chatHistory);
+            }
+          }
+        });
+      }
+      
+      const membersIds = (selectedTeam.members || []).map(m => m._id);
+      socket.emit("invite-team-to-session", {
+        sessionId: response.sessionId,
+        teamName: selectedTeam.name,
+        adminName: currentUser.name || "Admin",
+        members: membersIds
+      });
+      
+      onClose();
+    });
+  };
 
   const fetchTeams = async () => {
     setLoading(true);
@@ -134,7 +193,7 @@ const MyTeamsModal = ({ isOpen, onClose, socket, sessionId, setSessionId, setIsA
       );
       setSelectedTeam(response.data.team);
     } catch (err) {
-      alert(err.response?.data?.message || "Action failed");
+      showAlert("Action Failed", err.response?.data?.message || "Action failed");
     }
   };
 
@@ -157,7 +216,7 @@ const MyTeamsModal = ({ isOpen, onClose, socket, sessionId, setSessionId, setIsA
       setSelectedTeam(response.data.team);
       setIsEditingDesc(false);
     } catch (err) {
-      alert(err.response?.data?.message || "Failed to update description");
+      showAlert("Error", err.response?.data?.message || "Failed to update description");
     } finally {
       setSavingDesc(false);
     }
@@ -175,7 +234,7 @@ const MyTeamsModal = ({ isOpen, onClose, socket, sessionId, setSessionId, setIsA
       setSelectedTeam(null);
       fetchTeams();
     } catch (err) {
-      alert(err.response?.data?.message || "Failed to delete team");
+      showAlert("Error", err.response?.data?.message || "Failed to delete team");
     } finally {
       setDeletingTeam(false);
       setIsConfirmingDelete(false);
@@ -329,16 +388,15 @@ const MyTeamsModal = ({ isOpen, onClose, socket, sessionId, setSessionId, setIsA
                                       }
                                       onClose();
                                     } else {
-                                      alert(res.message || "Failed to rejoin session.");
+                                      showAlert("Failed to Rejoin", res.message || "Failed to rejoin session.");
                                     }
                                   });
                                 } else {
                                   socket.emit("join-request", { sessionId: activeSession.sessionId, username }, (res) => {
                                     if (res && res.success) {
-                                      alert("Join request sent to the admin. Please wait for approval...");
-                                      onClose();
+                                      showAlert("Join Request Sent", "Join request sent to the admin. Please wait for approval...");
                                     } else {
-                                      alert(res.message || "Failed to send join request.");
+                                      showAlert("Failed to Join", res.message || "Failed to send join request.");
                                     }
                                   });
                                 }
@@ -366,50 +424,8 @@ const MyTeamsModal = ({ isOpen, onClose, socket, sessionId, setSessionId, setIsA
                                 title={sessionId ? "Cannot start a new session while already in an active session" : ""}
                                 onClick={() => {
                                   if (sessionId) return;
-                                  const username = currentUser.name || "Admin";
-                                  socket.emit("create-session", { 
-                                    password: null, 
-                                    username,
-                                    teamId: selectedTeam.teamId,
-                                    teamName: selectedTeam.name,
-                                    userId: currentUser.id || currentUser._id
-                                  }, (response) => {
-                                    setSessionId(response.sessionId);
-                                    setIsAdmin(true);
-                                    if (setTeamInfo) {
-                                      setTeamInfo({
-                                        sessionId: response.sessionId,
-                                        teamId: selectedTeam.teamId,
-                                        teamName: selectedTeam.name,
-                                        adminName: username
-                                      });
-                                    }
-                                    
-                                    // Load previous session data for the team if any exists
-                                    if (setPreviousSessionData && setDrawingData) {
-                                      socket.emit("load-previous-session", { teamId: selectedTeam.teamId }, (sessionRes) => {
-                                        if (sessionRes && sessionRes.success) {
-                                          if (sessionRes.drawingData) {
-                                            setPreviousSessionData(sessionRes);
-                                            setDrawingData(sessionRes.drawingData);
-                                          }
-                                          if (sessionRes.chatHistory && setChatMessages) {
-                                            setChatMessages(sessionRes.chatHistory);
-                                          }
-                                        }
-                                      });
-                                    }
-                                    
-                                    const membersIds = (selectedTeam.members || []).map(m => m._id);
-                                    socket.emit("invite-team-to-session", {
-                                      sessionId: response.sessionId,
-                                      teamName: selectedTeam.name,
-                                      adminName: currentUser.name || "Admin",
-                                      members: membersIds
-                                    });
-                                    
-                                    onClose();
-                                  });
+                                  setSelectedDuration(30);
+                                  setShowDurationSelect(true);
                                 }}
                                 className={`text-xs font-bold px-3 py-1.5 rounded-lg flex items-center gap-1 transition-all ${
                                   sessionId 
@@ -598,6 +614,65 @@ const MyTeamsModal = ({ isOpen, onClose, socket, sessionId, setSessionId, setIsA
             </div>
           )}
         </div>
+        {showDurationSelect && (
+          <div className="absolute inset-0 bg-black/80 backdrop-blur-md flex items-center justify-center z-[110] p-6 rounded-2xl animate-in fade-in duration-200">
+            <div className="bg-[#121214] border border-white/10 rounded-2xl w-full max-w-sm p-6 shadow-2xl space-y-4 relative">
+              <h3 className="text-sm font-bold text-white uppercase tracking-wider text-center">Select Session Duration</h3>
+              <p className="text-[11px] text-gray-400 text-center">How long should this session stay active before auto-terminating?</p>
+              <div className="grid grid-cols-2 gap-3">
+                <button
+                  onClick={() => setSelectedDuration(30)}
+                  className={`p-3 rounded-xl border text-center transition-all cursor-pointer ${
+                    selectedDuration === 30
+                      ? "border-indigo-500 bg-indigo-500/10 text-white font-bold"
+                      : "border-white/5 bg-white/5 text-gray-400 hover:bg-white/10"
+                  }`}
+                >
+                  <span className="block text-xs font-semibold">30 Minutes</span>
+                </button>
+                <button
+                  onClick={() => setSelectedDuration(60)}
+                  className={`p-3 rounded-xl border text-center transition-all cursor-pointer ${
+                    selectedDuration === 60
+                      ? "border-indigo-500 bg-indigo-500/10 text-white font-bold"
+                      : "border-white/5 bg-white/5 text-gray-400 hover:bg-white/10"
+                  }`}
+                >
+                  <span className="block text-xs font-semibold">1 Hour</span>
+                </button>
+              </div>
+              <div className="flex gap-2 pt-2">
+                <button
+                  onClick={() => setShowDurationSelect(false)}
+                  className="flex-1 py-2 bg-white/5 hover:bg-white/10 text-gray-300 border border-white/5 rounded-xl text-xs font-bold transition-all cursor-pointer text-center"
+                >
+                  Cancel
+                </button>
+                <button
+                  onClick={() => {
+                    setShowDurationSelect(false);
+                    startTeamSession(selectedDuration);
+                  }}
+                  className="flex-1 py-2 bg-gradient-to-r from-indigo-500 to-purple-600 hover:from-indigo-600 hover:to-purple-700 text-white rounded-xl text-xs font-bold transition-all shadow-[0_2px_10px_rgba(99,102,241,0.2)] cursor-pointer text-center"
+                >
+                  Start Session
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
+        <AlertModal
+          isOpen={alertConfig.isOpen}
+          title={alertConfig.title}
+          message={alertConfig.message}
+          type={alertConfig.type}
+          onClose={() => {
+            setAlertConfig({ ...alertConfig, isOpen: false });
+            if (alertConfig.title === "Join Request Sent") {
+              onClose();
+            }
+          }}
+        />
       </div>
     </div>
   );

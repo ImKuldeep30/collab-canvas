@@ -38,6 +38,12 @@ const forgotPasswordLimiter = rateLimit({
   message: "Too many password reset requests, please try again later",
 });
 
+const updateProfileLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000, // 15 minutes
+  max: 30, // Limit each IP to 30 updates per 15 minutes
+  message: "Too many profile updates, please try again later",
+});
+
 // 1. Register/Signup
 router.post("/register", signupLimiter, signup);
 
@@ -70,7 +76,7 @@ router.post("/refresh-token", refreshToken);
 router.post("/resend-verification-email", resendVerificationEmail);
 
 // 11. Update profile (protected)
-router.put("/update-profile", protect, updateProfile);
+router.put("/update-profile", protect, updateProfileLimiter, updateProfile);
 
 // 12. Delete account (protected)
 router.delete("/delete-account", protect, deleteAccount);

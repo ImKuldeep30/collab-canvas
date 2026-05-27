@@ -1,12 +1,17 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { X, User, Mail, UserCog } from 'lucide-react';
 
 const UpdateProfileModal = ({ isOpen, onClose, user, setUser }) => {
   const [name, setName] = useState(user?.name || "");
-  const [email, setEmail] = useState(user?.email || "");
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
   const [success, setSuccess] = useState("");
+
+  useEffect(() => {
+    if (user) {
+      setName(user.name || "");
+    }
+  }, [user, isOpen]);
 
   if (!isOpen) return null;
 
@@ -24,7 +29,7 @@ const UpdateProfileModal = ({ isOpen, onClose, user, setUser }) => {
           "Content-Type": "application/json",
           Authorization: `Bearer ${token}`
         },
-        body: JSON.stringify({ name, email })
+        body: JSON.stringify({ name })
       });
 
       const data = await res.json();
@@ -35,7 +40,7 @@ const UpdateProfileModal = ({ isOpen, onClose, user, setUser }) => {
 
       setSuccess(data.message || "Profile updated successfully!");
       if (data.user) {
-        setUser(prev => ({ ...prev, ...data.user, isVerified: email !== prev?.email ? false : prev?.isVerified }));
+        setUser(prev => ({ ...prev, ...data.user }));
         localStorage.setItem("user", JSON.stringify({ ...user, ...data.user }));
       }
       
@@ -92,10 +97,9 @@ const UpdateProfileModal = ({ isOpen, onClose, user, setUser }) => {
             </label>
             <input 
               type="email"
-              value={email}
-              onChange={(e) => setEmail(e.target.value)}
-              required
-              className="w-full px-4 py-2.5 bg-black/40 border border-white/10 rounded-xl text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-indigo-500/30 focus:border-indigo-500 transition-all text-sm shadow-inner"
+              value={user?.email || ""}
+              disabled
+              className="w-full px-4 py-2.5 bg-black/20 border border-white/5 rounded-xl text-gray-400 cursor-not-allowed text-sm shadow-inner"
               placeholder="Your Email"
             />
           </div>
@@ -113,7 +117,7 @@ const UpdateProfileModal = ({ isOpen, onClose, user, setUser }) => {
 
           <button 
             type="submit"
-            disabled={loading || (name === user?.name && email === user?.email)}
+            disabled={loading || name === user?.name}
             className="w-full mt-4 bg-gradient-to-r from-indigo-500 via-purple-500 to-pink-500 hover:opacity-95 disabled:opacity-50 disabled:cursor-not-allowed text-white py-3 rounded-xl text-xs font-bold transition-all duration-300 shadow-[0_4px_20px_rgba(99,102,241,0.25)] hover:scale-[1.01] active:scale-[0.99] cursor-pointer"
           >
             {loading ? "Updating..." : "Save Changes"}

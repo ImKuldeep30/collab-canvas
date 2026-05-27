@@ -1,15 +1,17 @@
 import React, { useState } from 'react';
 import { X, Copy, Check, ShieldAlert, KeyRound, Sparkles } from 'lucide-react';
 
-const CreateSessionModal = ({ isOpen, onClose, socket, setSessionId }) => {
+const CreateSessionModal = ({ isOpen, onClose, socket, setSessionId, setIsAdmin }) => {
   const [password, setPassword] = useState('');
   const [generatedSessionId, setGeneratedSessionId] = useState(null);
   const [copied, setCopied] = useState(false);
   const [isCreating, setIsCreating] = useState(false);
+  const [showDurationSelect, setShowDurationSelect] = useState(false);
+  const [selectedDuration, setSelectedDuration] = useState(30);
 
   if (!isOpen) return null;
 
-  const handleCreate = () => {
+  const handleCreate = (duration) => {
     if (!socket) return;
     setIsCreating(true);
     
@@ -17,16 +19,17 @@ const CreateSessionModal = ({ isOpen, onClose, socket, setSessionId }) => {
     const userData = JSON.parse(localStorage.getItem("user") || "{}");
     const username = userData.name || "Admin";
 
-    socket.emit("create-session", { password, username }, (response) => {
+    socket.emit("create-session", { password, username, duration }, (response) => {
       setGeneratedSessionId(response.sessionId);
       setSessionId(response.sessionId);
+      if (setIsAdmin) setIsAdmin(true);
       setIsCreating(false);
     });
   };
 
   const copyToClipboard = () => {
     if (generatedSessionId) {
-      navigator.clipboard.writeText(generatedSessionId);
+      navigator.clipboard.writeText(generatedSessionId.toUpperCase());
       setCopied(true);
       setTimeout(() => setCopied(false), 2000);
     }
@@ -36,6 +39,7 @@ const CreateSessionModal = ({ isOpen, onClose, socket, setSessionId }) => {
     setPassword('');
     setGeneratedSessionId(null);
     setCopied(false);
+    setShowDurationSelect(false);
     onClose();
   };
 
@@ -94,12 +98,63 @@ const CreateSessionModal = ({ isOpen, onClose, socket, setSessionId }) => {
             </div>
 
             <button
-              onClick={handleCreate}
+              onClick={() => {
+                setSelectedDuration(30);
+                setShowDurationSelect(true);
+              }}
               disabled={isCreating}
-              className="w-full bg-gradient-to-r from-indigo-500 via-purple-500 to-pink-500 hover:opacity-95 text-white font-bold py-3 rounded-xl transition-all duration-300 shadow-[0_4px_20px_rgba(99,102,241,0.25)] hover:scale-[1.01] active:scale-[0.99] disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:scale-100 disabled:hover:shadow-none cursor-pointer text-xs mt-2"
+              className="w-full bg-gradient-to-r from-indigo-500 to-purple-600 hover:from-indigo-600 hover:to-purple-700 text-white font-bold py-3 rounded-xl transition-all duration-300 shadow-[0_4px_20px_rgba(99,102,241,0.25)] hover:scale-[1.01] active:scale-[0.99] disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:scale-100 disabled:hover:shadow-none cursor-pointer text-xs mt-2"
             >
               {isCreating ? 'Creating Room...' : 'Create Room'}
             </button>
+
+            {showDurationSelect && (
+              <div className="absolute inset-0 bg-[#121214]/95 backdrop-blur-xl flex flex-col items-center justify-center p-6 rounded-2xl animate-in fade-in duration-200 z-[110]">
+                <div className="w-full max-w-xs space-y-4">
+                  <h3 className="text-sm font-bold text-white uppercase tracking-wider text-center">Select Session Duration</h3>
+                  <p className="text-[11px] text-gray-400 text-center">How long should this session stay active before auto-terminating?</p>
+                  <div className="grid grid-cols-2 gap-3">
+                    <button
+                      onClick={() => setSelectedDuration(30)}
+                      className={`p-3 rounded-xl border text-center transition-all cursor-pointer ${
+                        selectedDuration === 30
+                          ? "border-indigo-500 bg-indigo-500/10 text-white font-bold"
+                          : "border-white/5 bg-white/5 text-gray-400 hover:bg-white/10"
+                      }`}
+                    >
+                      <span className="block text-xs">30 Minutes</span>
+                    </button>
+                    <button
+                      onClick={() => setSelectedDuration(60)}
+                      className={`p-3 rounded-xl border text-center transition-all cursor-pointer ${
+                        selectedDuration === 60
+                          ? "border-indigo-500 bg-indigo-500/10 text-white font-bold"
+                          : "border-white/5 bg-white/5 text-gray-400 hover:bg-white/10"
+                      }`}
+                    >
+                      <span className="block text-xs">1 Hour</span>
+                    </button>
+                  </div>
+                  <div className="flex gap-2 pt-2">
+                    <button
+                      onClick={() => setShowDurationSelect(false)}
+                      className="flex-1 py-2 bg-white/5 hover:bg-white/10 text-gray-300 border border-white/5 rounded-xl text-xs font-bold transition-all cursor-pointer text-center"
+                    >
+                      Back
+                    </button>
+                    <button
+                      onClick={() => {
+                        setShowDurationSelect(false);
+                        handleCreate(selectedDuration);
+                      }}
+                      className="flex-1 py-2 bg-gradient-to-r from-indigo-500 to-purple-600 hover:from-indigo-600 hover:to-purple-700 text-white rounded-xl text-xs font-bold transition-all shadow-[0_2px_10px_rgba(99,102,241,0.2)] cursor-pointer text-center"
+                    >
+                      Create
+                    </button>
+                  </div>
+                </div>
+              </div>
+            )}
           </div>
         ) : (
           <div className="space-y-5 text-center py-2">
@@ -110,8 +165,8 @@ const CreateSessionModal = ({ isOpen, onClose, socket, setSessionId }) => {
             <div>
               <p className="text-gray-300 text-sm mb-3 font-medium">Your session is ready! Share the ID below:</p>
               <div className="flex items-center justify-between bg-black/40 border border-white/10 rounded-xl p-3 gap-3 shadow-inner">
-                <span className="text-lg font-mono text-indigo-400 tracking-wider font-extrabold select-all pl-2">
-                  {generatedSessionId}
+                <span className="text-lg font-mono text-indigo-400 tracking-wider font-extrabold select-all pl-2 uppercase">
+                  {generatedSessionId?.toUpperCase()}
                 </span>
                 <button
                   onClick={copyToClipboard}
@@ -128,7 +183,7 @@ const CreateSessionModal = ({ isOpen, onClose, socket, setSessionId }) => {
             
             <button
               onClick={handleClose}
-              className="w-full bg-white hover:bg-gray-100 text-gray-900 font-bold py-2.5 rounded-xl transition-all shadow-[0_2px_8px_rgba(255,255,255,0.1)] hover:scale-[1.01] active:scale-[0.99] cursor-pointer text-xs"
+              className="w-full bg-gradient-to-r from-indigo-500 to-purple-600 hover:from-indigo-600 hover:to-purple-700 text-white font-bold py-2.5 rounded-xl transition-all shadow-[0_4px_12px_rgba(99,102,241,0.25)] hover:scale-[1.01] active:scale-[0.99] cursor-pointer text-xs"
             >
               Start Drawing
             </button>

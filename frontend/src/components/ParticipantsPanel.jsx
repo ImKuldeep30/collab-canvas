@@ -1,8 +1,10 @@
 import React, { useState, useEffect } from 'react';
 import { Users, Shield, UserX, X, ShieldX, UserCheck, ShieldClose, Clock } from 'lucide-react';
+import AlertModal from './AlertModal';
 
 const ParticipantsPanel = ({ socket, sessionId, isAdmin, joinRequests, setJoinRequests, onClose }) => {
   const [users, setUsers] = useState([]);
+  const [kickTarget, setKickTarget] = useState(null);
 
   useEffect(() => {
     if (!socket || !sessionId) return;
@@ -40,9 +42,7 @@ const ParticipantsPanel = ({ socket, sessionId, isAdmin, joinRequests, setJoinRe
   };
 
   const kickUser = (targetSocketId) => {
-    if(window.confirm("Are you sure you want to kick this user?")) {
-       socket.emit("kick-user", { sessionId, targetSocketId });
-    }
+    setKickTarget(targetSocketId);
   };
 
   const getInitials = (name) => {
@@ -165,6 +165,17 @@ const ParticipantsPanel = ({ socket, sessionId, isAdmin, joinRequests, setJoinRe
              })}
           </div>
         </div>
+        <AlertModal
+          isOpen={!!kickTarget}
+          title="Kick Participant"
+          message="Are you sure you want to kick this user from the session?"
+          type="confirm"
+          onConfirm={() => {
+            socket.emit("kick-user", { sessionId, targetSocketId: kickTarget });
+            setKickTarget(null);
+          }}
+          onClose={() => setKickTarget(null)}
+        />
       </div>
     </div>
   );

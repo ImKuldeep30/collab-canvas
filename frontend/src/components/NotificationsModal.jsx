@@ -1,11 +1,17 @@
 import React, { useState, useEffect } from "react";
 import { X, Bell, Check } from "lucide-react";
 import axios from "axios";
+import AlertModal from "./AlertModal";
 
 const NotificationsModal = ({ isOpen, onClose }) => {
   const [notifications, setNotifications] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
+  const [alertConfig, setAlertConfig] = useState({ isOpen: false, title: "Notification", message: "" });
+
+  const showAlert = (title, message) => {
+    setAlertConfig({ isOpen: true, title, message });
+  };
 
   useEffect(() => {
     if (isOpen) {
@@ -39,7 +45,7 @@ const NotificationsModal = ({ isOpen, onClose }) => {
       // Remove handled notification from list
       setNotifications((prev) => prev.filter(n => !(n.teamId === teamId && n.user._id === userId)));
     } catch (err) {
-      alert(err.response?.data?.message || "Action failed");
+      showAlert("Action Failed", err.response?.data?.message || "Action failed");
     }
   };
 
@@ -127,6 +133,13 @@ const NotificationsModal = ({ isOpen, onClose }) => {
             </div>
           )}
         </div>
+        <AlertModal
+          isOpen={alertConfig.isOpen}
+          title={alertConfig.title}
+          message={alertConfig.message}
+          type="alert"
+          onClose={() => setAlertConfig({ ...alertConfig, isOpen: false })}
+        />
       </div>
     </div>
   );

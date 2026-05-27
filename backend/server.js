@@ -47,6 +47,62 @@ app.use("/api/teams", teamRoutes);
 
 // --- WebSocket Logic Starts Here ---
 
+const terminateSessionInternal = (sessionId, data) => {
+  console.log(`[AUTO-TERMINATE] Auto-terminating session ${sessionId}`);
+  const session = sessions.get(sessionId);
+  if (!session) return;
+  
+  // If this is a team session, save to database
+  if (session.teamId) {
+    const drawingMap = sessionDrawingData.get(sessionId);
+    const drawingData = drawingMap ? Array.from(drawingMap.values()) : [];
+    const chats = sessionChats.get(sessionId) || [];
+    const canvasWidth = data?.canvasWidth || 1920;
+    const canvasHeight = data?.canvasHeight || 1080;
+    
+    console.log(`[AUTO-TERMINATE] Saving team session. teamId=${session.teamId}, chats=${chats.length}, drawings=${drawingData.length}`);
+    
+    const updatePayload = {
+      $set: {
+        teamName: session.teamName,
+        drawingData: drawingData,
+        chatHistory: chats,
+        canvasWidth: canvasWidth,
+        canvasHeight: canvasHeight,
+        lastModified: new Date(),
+      }
+    };
+    
+    if (session.userId) {
+      updatePayload.$set.createdBy = session.userId;
+    }
+    
+    SessionData.findOneAndUpdate(
+      { teamId: session.teamId },
+      updatePayload,
+      { upsert: true, returnDocument: 'after' }
+    ).then(result => {
+      console.log(`[AUTO-TERMINATE] DB save SUCCESS.`);
+    }).catch(err => {
+      console.error("[AUTO-TERMINATE] DB save ERROR:", err.message);
+    });
+  }
+  
+  io.to(sessionId).emit("session-terminated", { sessionId, message: "The session timer has expired." });
+  
+  // Clean up timeouts
+  if (sessionTimeouts.has(sessionId)) {
+    clearTimeout(sessionTimeouts.get(sessionId));
+    sessionTimeouts.delete(sessionId);
+  }
+  
+  io.in(sessionId).socketsLeave(sessionId);
+  sessionDrawingData.delete(sessionId);
+  sessionChats.delete(sessionId);
+  sessionFiles.delete(sessionId);
+  sessions.delete(sessionId);
+};
+
 io.on("connection", (socket) => {
   console.log("User connected:", socket.id);
 
@@ -82,11 +138,23 @@ io.on("connection", (socket) => {
     const teamId = data?.teamId || null;
     const teamName = data?.teamName || null;
     const userId = data?.userId || null;
+    const duration = data?.duration || null; // duration in minutes
     const sessionId = uuidv4().substring(0, 8); 
     socket.join(sessionId);
     
     const usersMap = new Map();
     usersMap.set(socket.id, { username, canDraw: true });
+    
+    let expiresAt = null;
+    if (duration) {
+      expiresAt = Date.now() + duration * 60 * 1000;
+      
+      const timeoutId = setTimeout(() => {
+        terminateSessionInternal(sessionId);
+      }, duration * 60 * 1000);
+      
+      sessionTimeouts.set(sessionId, timeoutId);
+    }
     
     sessions.set(sessionId, { 
       admin: socket.id,
@@ -96,13 +164,19 @@ io.on("connection", (socket) => {
       teamId,
       teamName,
       userId,
-      createdAt: new Date()
+      createdAt: new Date(),
+      expiresAt: expiresAt
     });
     sessionDrawingData.set(sessionId, new Map());
     sessionChats.set(sessionId, []);
     sessionFiles.set(sessionId, new Map()); // fileId -> file blob
-    console.log(`Session ${sessionId} created by ${socket.id} (Admin) - Team: ${teamName || 'None'}`);
-    if (callback) callback({ sessionId });
+    console.log(`Session ${sessionId} created by ${socket.id} (Admin) - Team: ${teamName || 'None'} - Duration: ${duration || 'unlimited'} mins`);
+    
+    if (expiresAt) {
+      io.to(socket.id).emit("session-timer-info", { expiresAt });
+    }
+    
+    if (callback) callback({ sessionId, expiresAt });
   });
 
   socket.on("load-previous-session", (data, callback) => {
@@ -200,6 +274,10 @@ io.on("connection", (socket) => {
       session.users.set(socket.id, { username: username || "Admin", canDraw: true });
       socket.join(sessionId);
       
+      if (session.expiresAt) {
+        io.to(socket.id).emit("session-timer-info", { expiresAt: session.expiresAt });
+      }
+      
       io.to(sessionId).emit("admin-rejoined", { message: "The admin has rejoined the session." });
       io.to(sessionId).emit("user-joined", { socketId: socket.id, username: username || "Admin", canDraw: true });
       io.to(session.admin).emit("session-users-update", Array.from(session.users.entries()));
@@ -213,7 +291,8 @@ io.on("connection", (socket) => {
         canDraw: true, 
         chatEnabled: session.chatEnabled,
         drawingData: activeDrawingData,
-        chatHistory: activeChats
+        chatHistory: activeChats,
+        expiresAt: session.expiresAt
       });
     } else {
       if (callback) callback({ success: false, message: "You are not the admin of this session." });
@@ -293,12 +372,16 @@ io.on("connection", (socket) => {
         files: activeFiles,
         teamId: session.teamId || null,
         teamName: session.teamName || null,
-        adminName
+        adminName,
+        expiresAt: session.expiresAt
       });
       
       const joiningSocket = io.sockets.sockets.get(socketId);
       if (joiningSocket) {
         joiningSocket.join(sessionId);
+        if (session.expiresAt) {
+          io.to(socketId).emit("session-timer-info", { expiresAt: session.expiresAt });
+        }
       }
       
       io.to(sessionId).emit("user-joined", { socketId, username, canDraw: true });
@@ -323,6 +406,15 @@ io.on("connection", (socket) => {
        if (callback) callback({ users: Array.from(session.users.entries()), isAdmin, canDraw: myPermission, chatEnabled: session.chatEnabled });
     } else {
        if (callback) callback({ users: [], isAdmin: false, canDraw: false, chatEnabled: true });
+    }
+  });
+
+  socket.on("get-session-timer", (sessionId, callback) => {
+    const session = sessions.get(sessionId);
+    if (session && callback) {
+      callback({ expiresAt: session.expiresAt });
+    } else if (callback) {
+      callback({ expiresAt: null });
     }
   });
 
@@ -408,6 +500,13 @@ io.on("connection", (socket) => {
     }
     
     io.to(sessionId).emit("session-terminated", { sessionId, message: "The admin has terminated the session." });
+    
+    // Clean up timeouts
+    if (sessionTimeouts.has(sessionId)) {
+      clearTimeout(sessionTimeouts.get(sessionId));
+      sessionTimeouts.delete(sessionId);
+    }
+    
     io.in(sessionId).socketsLeave(sessionId);
     sessionDrawingData.delete(sessionId);
     sessionChats.delete(sessionId);
@@ -427,6 +526,10 @@ io.on("connection", (socket) => {
     session.users.set(socket.id, { username: username || "Team Member", canDraw: true });
     socket.join(sessionId);
     
+    if (session.expiresAt) {
+      io.to(socket.id).emit("session-timer-info", { expiresAt: session.expiresAt });
+    }
+    
     io.to(sessionId).emit("user-joined", { socketId: socket.id, username: username || "Team Member", canDraw: true });
     io.to(session.admin).emit("session-users-update", Array.from(session.users.entries()));
     
@@ -440,7 +543,8 @@ io.on("connection", (socket) => {
       canDraw: true,
       drawingData: activeDrawingData,
       chatHistory: activeChats,
-      files: activeFiles
+      files: activeFiles,
+      expiresAt: session.expiresAt
     });
   });
 

@@ -28,6 +28,35 @@ export default function Home() {
   const ignoredSessionsRef = useRef(new Set());
   const canvasContainerRef = useRef(null);
 
+  const [user, setUser] = useState(() => {
+    try {
+      const cached = localStorage.getItem("user");
+      return cached ? JSON.parse(cached) : null;
+    } catch {
+      return null;
+    }
+  });
+
+  useEffect(() => {
+    const fetchUser = async () => {
+      try {
+        const token = localStorage.getItem("accessToken");
+        if (!token) return;
+        const res = await fetch("http://192.168.1.10:3000/api/auth/me", {
+          headers: { Authorization: `Bearer ${token}` }
+        });
+        if (res.ok) {
+          const data = await res.json();
+          setUser(data);
+          localStorage.setItem("user", JSON.stringify(data));
+        }
+      } catch (err) {
+        console.error("Failed to fetch user:", err);
+      }
+    };
+    fetchUser();
+  }, []);
+
   const isChatOpenRef = useRef(isChatOpen);
   useEffect(() => {
     isChatOpenRef.current = isChatOpen;
@@ -285,6 +314,8 @@ export default function Home() {
           setPreviousSessionData={setPreviousSessionData}
           setDrawingData={setDrawingData}
           setChatMessages={setChatMessages}
+          user={user}
+          setUser={setUser}
         />
       </div>
 
@@ -304,6 +335,7 @@ export default function Home() {
             teamInfo={teamInfo}
             drawingData={drawingData}
             setDrawingData={setDrawingData}
+            canvasDarkMode={user?.canvasDarkMode}
           />
           
           {/* Chat Toggle Button (Only visible if in session but chat is closed) */}
@@ -313,16 +345,18 @@ export default function Home() {
                 setIsChatOpen(true);
                 setHasUnreadMessages(false);
               }}
-              className="absolute bottom-6 right-6 bg-gradient-to-r from-indigo-500 to-purple-600 hover:from-indigo-600 hover:to-purple-700 text-white rounded-full p-4 shadow-xl transition-all hover:scale-105 active:scale-95 z-50 border border-white/10 cursor-pointer"
+              className={`absolute bottom-6 right-6 bg-gradient-to-r from-indigo-500 to-purple-600 hover:from-indigo-600 hover:to-purple-700 text-white rounded-full p-4 shadow-xl transition-all hover:scale-105 active:scale-95 z-50 border border-white/10 cursor-pointer ${
+                hasUnreadMessages ? "animate-bounce shadow-[0_0_25px_rgba(244,63,94,0.65)] border-rose-500/50" : ""
+              }`}
               title="Open Chat"
             >
               <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M8 10h.01M12 10h.01M16 10h.01M9 16H5a2 2 0 01-2-2V6a2 2 0 012-2h14a2 2 0 012 2v8a2 2 0 01-2 2h-5l-5 5v-5z" />
               </svg>
               {hasUnreadMessages && (
-                <span className="absolute top-0 right-0 flex h-3 w-3">
+                <span className="absolute -top-1 -right-1 flex h-3.5 w-3.5 z-10">
                   <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-rose-500 opacity-75"></span>
-                  <span className="relative inline-flex rounded-full h-3 w-3 bg-rose-500 border border-white/20"></span>
+                  <span className="relative inline-flex rounded-full h-3.5 w-3.5 bg-rose-500 border border-white/20"></span>
                 </span>
               )}
             </button>
@@ -424,7 +458,12 @@ export default function Home() {
         isOpen={alertConfig.isOpen} 
         title={alertConfig.title} 
         message={alertConfig.message} 
-        onClose={() => setAlertConfig({ ...alertConfig, isOpen: false })} 
+        onClose={() => {
+          setAlertConfig({ ...alertConfig, isOpen: false });
+          if (alertConfig.title === "Session Ended") {
+            window.location.reload();
+          }
+        }} 
       />
       {isAdminLeft && (
         <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-black/80 backdrop-blur-md">

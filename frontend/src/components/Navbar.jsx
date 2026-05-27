@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react'
-import { User, Settings, LogOut, Mail, CheckCircle2, XCircle, Key, UserCog, Palette, Bell, ChevronRight, Users, X, UserPlus, LogIn, Copy, Check, Info } from 'lucide-react';
+import { User, Settings, LogOut, Mail, CheckCircle2, XCircle, Key, UserCog, Palette, Bell, ChevronRight, Users, X, UserPlus, LogIn, Copy, Check, Info, Moon } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import UpdateProfileModal from './UpdateProfileModal';
 import ChangePasswordModal from './ChangePasswordModal';
@@ -11,12 +11,13 @@ import NotificationsModal from './NotificationsModal';
 import JoinSessionModal from './JoinSessionModal';
 import AlertModal from './AlertModal';
 
-const Navbar = ({ socket, sessionId, setSessionId, isAdmin, setIsAdmin, onToggleParticipants, joinRequestsCount, setTeamInfo, setPreviousSessionData, setDrawingData, setChatMessages }) => {
+const Navbar = ({ socket, sessionId, setSessionId, isAdmin, setIsAdmin, onToggleParticipants, joinRequestsCount, setTeamInfo, setPreviousSessionData, setDrawingData, setChatMessages, user, setUser }) => {
   const [isProfileOpen, setIsProfileOpen] = useState(false);
   const [isSettingsOpen, setIsSettingsOpen] = useState(false);
   const [isUpdateProfileModalOpen, setIsUpdateProfileModalOpen] = useState(false);
   const [isChangePasswordModalOpen, setIsChangePasswordModalOpen] = useState(false);
   const [isConfirmEndSessionOpen, setIsConfirmEndSessionOpen] = useState(false);
+  const [isConfirmLeaveSessionOpen, setIsConfirmLeaveSessionOpen] = useState(false);
   
   const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
   const [isJoinModalOpen, setIsJoinModalOpen] = useState(false);
@@ -27,21 +28,86 @@ const Navbar = ({ socket, sessionId, setSessionId, isAdmin, setIsAdmin, onToggle
   const [isNotificationsOpen, setIsNotificationsOpen] = useState(false);
   const [notificationCount, setNotificationCount] = useState(0);
   
-  const [user, setUser] = useState(() => {
-    try {
-      const cached = localStorage.getItem("user");
-      return cached ? JSON.parse(cached) : null;
-    } catch {
-      return null;
-    }
-  });
   const [loading, setLoading] = useState(false);
   const [hasFetched, setHasFetched] = useState(false);
   const [copied, setCopied] = useState(false);
 
+  const [expiresAt, setExpiresAt] = useState(null);
+  const [timeLeft, setTimeLeft] = useState(null);
+
   const profileRef = useRef(null);
   const settingsRef = useRef(null);
   const navigate = useNavigate();
+
+  useEffect(() => {
+    if (socket && sessionId) {
+      socket.emit("get-session-timer", sessionId, (res) => {
+        if (res && res.expiresAt) {
+          setExpiresAt(res.expiresAt);
+        }
+      });
+    } else {
+      setExpiresAt(null);
+      setTimeLeft(null);
+    }
+  }, [socket, sessionId]);
+
+  useEffect(() => {
+    if (!socket) return;
+    
+    const handleTimerInfo = (data) => {
+      if (data && data.expiresAt) {
+        setExpiresAt(data.expiresAt);
+      } else {
+        setExpiresAt(null);
+      }
+    };
+    
+    socket.on("session-timer-info", handleTimerInfo);
+    
+    const handleSessionTerminated = () => {
+      setExpiresAt(null);
+      setTimeLeft(null);
+    };
+    
+    socket.on("session-terminated", handleSessionTerminated);
+    socket.on("kicked", handleSessionTerminated);
+    
+    return () => {
+      socket.off("session-timer-info", handleTimerInfo);
+      socket.off("session-terminated", handleSessionTerminated);
+      socket.off("kicked", handleSessionTerminated);
+    };
+  }, [socket]);
+
+  useEffect(() => {
+    if (!expiresAt) {
+      setTimeLeft(null);
+      return;
+    }
+    
+    const updateTimer = () => {
+      const now = Date.now();
+      const remaining = expiresAt - now;
+      
+      if (remaining <= 0) {
+        setTimeLeft("00:00");
+        setExpiresAt(null);
+        return;
+      }
+      
+      const totalSeconds = Math.floor(remaining / 1000);
+      const minutes = Math.floor(totalSeconds / 60);
+      const seconds = totalSeconds % 60;
+      
+      const formatted = `${String(minutes).padStart(2, '0')}:${String(seconds).padStart(2, '0')}`;
+      setTimeLeft(formatted);
+    };
+    
+    updateTimer();
+    const interval = setInterval(updateTimer, 1000);
+    return () => clearInterval(interval);
+  }, [expiresAt]);
 
   const fetchNotificationCount = async () => {
     try {
@@ -185,6 +251,39 @@ const Navbar = ({ socket, sessionId, setSessionId, isAdmin, setIsAdmin, onToggle
     setIsCreateModalOpen(true);
   };
 
+  const toggleCanvasDarkMode = async () => {
+    try {
+      const targetMode = !user?.canvasDarkMode;
+      
+      setUser(prev => ({ ...prev, canvasDarkMode: targetMode }));
+      localStorage.setItem("user", JSON.stringify({ ...user, canvasDarkMode: targetMode }));
+
+      const token = localStorage.getItem("accessToken");
+      const res = await fetch("http://192.168.1.10:3000/api/auth/update-profile", {
+        method: "PUT",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${token}`
+        },
+        body: JSON.stringify({ canvasDarkMode: targetMode })
+      });
+      
+      const data = await res.json();
+      if (!res.ok) {
+        throw new Error(data.message || "Failed to update preference");
+      }
+      
+      if (data.user) {
+        setUser(prev => ({ ...prev, ...data.user }));
+        localStorage.setItem("user", JSON.stringify({ ...user, ...data.user }));
+      }
+    } catch (err) {
+      console.error("Failed to save canvas mode preference:", err);
+      setUser(prev => ({ ...prev, canvasDarkMode: !prev.canvasDarkMode }));
+      localStorage.setItem("user", JSON.stringify(user));
+    }
+  };
+
   const handleJoin = () => {
     setIsJoinModalOpen(true);
   };
@@ -294,12 +393,7 @@ const Navbar = ({ socket, sessionId, setSessionId, isAdmin, setIsAdmin, onToggle
 
           {sessionId && !isAdmin && (
             <button
-              onClick={() => {
-                if (window.confirm("Are you sure you want to leave this session?")) {
-                  socket.emit("leave-session", { sessionId });
-                  setSessionId(null);
-                }
-              }}
+              onClick={() => setIsConfirmLeaveSessionOpen(true)}
               className="text-rose-400 hover:text-white bg-rose-500/10 hover:bg-rose-600 border border-rose-500/20 hover:border-transparent px-2 py-1 md:px-2.5 md:py-1.5 rounded-lg transition-all duration-200 flex items-center gap-1 cursor-pointer"
               title="Leave Session"
             >
@@ -316,7 +410,10 @@ const Navbar = ({ socket, sessionId, setSessionId, isAdmin, setIsAdmin, onToggle
             >
               <Users size={16} />
               {joinRequestsCount > 0 && isAdmin && (
-                <span className="absolute top-0.5 right-0.5 w-1.5 h-1.5 bg-rose-500 rounded-full animate-pulse"></span>
+                <span className="absolute -top-1 -right-1 flex h-3 w-3 z-10">
+                  <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-rose-500 opacity-75"></span>
+                  <span className="relative inline-flex rounded-full h-3 w-3 bg-rose-500 border border-white/20"></span>
+                </span>
               )}
             </button>
           )}
@@ -324,18 +421,27 @@ const Navbar = ({ socket, sessionId, setSessionId, isAdmin, setIsAdmin, onToggle
 
         {/* Right Side: Collaboration Buttons, Notifications, Settings, Profile */}
         <div className="flex items-center gap-1.5 md:gap-2">
+          {timeLeft && (
+            <div className="flex items-center gap-2 px-2.5 py-1.5 bg-rose-500/10 border border-rose-500/20 text-rose-400 rounded-lg font-mono text-[10px] sm:text-xs font-black animate-pulse select-none shrink-0" title="Time Remaining">
+              <span className="relative flex h-1.5 w-1.5">
+                <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-rose-400 opacity-75"></span>
+                <span className="relative inline-flex rounded-full h-1.5 w-1.5 bg-rose-500"></span>
+              </span>
+              <span>{timeLeft}</span>
+            </div>
+          )}
           {/* Invite & Join buttons now placed on the right */}
           <button
             onClick={handleInvite}
             disabled={!!sessionId}
             title={sessionId ? "Cannot invite while in an active session" : ""}
-            className={`px-2.5 py-1.5 md:px-3.5 md:py-1.5 text-xs font-bold rounded-lg text-white transition-all duration-200 flex items-center gap-1.5 border-none ${
+            className={`px-2.5 py-1.5 md:px-3.5 md:py-1.5 text-xs font-bold rounded-lg transition-all duration-200 flex items-center gap-1.5 border border-indigo-500/20 ${
               sessionId 
-                ? "bg-gray-500/50 cursor-not-allowed opacity-50 shadow-none" 
-                : "bg-gradient-to-r from-indigo-500 via-purple-500 to-pink-500 hover:opacity-95 shadow-[0_2px_10px_rgba(99,102,241,0.2)] cursor-pointer active:scale-95 group"
+                ? "bg-gray-500/50 cursor-not-allowed opacity-50 shadow-none text-white/50 border-none" 
+                : "bg-indigo-500/10 hover:bg-indigo-500/20 text-indigo-400 hover:text-indigo-300 shadow-[0_2px_10px_rgba(99,102,241,0.05)] cursor-pointer active:scale-95 group"
             }`}
           >
-            <UserPlus size={14} className="text-white" />
+            <UserPlus size={14} className="text-indigo-400 group-hover:text-indigo-300 transition-colors" />
             <span className="hidden lg:inline">Invite</span>
           </button>
           <button
@@ -413,6 +519,31 @@ const Navbar = ({ socket, sessionId, setSessionId, isAdmin, setIsAdmin, onToggle
                   </div>
                   <ChevronRight size={14} className="text-gray-500 group-hover:text-gray-300 transition-colors" />
                 </button>
+
+                <div className="flex items-center justify-between p-2.5 rounded-xl hover:bg-white/5 text-gray-300 hover:text-white transition-colors group">
+                  <div className="flex items-center gap-3">
+                    <div className="p-2 rounded-lg bg-indigo-500/10 text-indigo-400 group-hover:bg-indigo-500/20 group-hover:scale-105 transition-all duration-200">
+                      <Moon size={14} />
+                    </div>
+                    <div className="flex flex-col">
+                      <span className="text-xs font-bold text-left">Always Dark Mode</span>
+                      <span className="text-[9px] text-gray-500 text-left">Force dark canvas on load</span>
+                    </div>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={toggleCanvasDarkMode}
+                    className={`w-9 h-5 flex items-center rounded-full p-0.5 cursor-pointer transition-all duration-300 ${
+                      user?.canvasDarkMode ? 'bg-indigo-500' : 'bg-white/10'
+                    }`}
+                  >
+                    <div
+                      className={`bg-white w-4 h-4 rounded-full shadow-md transform transition-transform duration-300 ${
+                        user?.canvasDarkMode ? 'translate-x-4' : 'translate-x-0'
+                      }`}
+                    />
+                  </button>
+                </div>
               </div>
             )}
           </div>
@@ -604,6 +735,19 @@ const Navbar = ({ socket, sessionId, setSessionId, isAdmin, setIsAdmin, onToggle
         type="confirm"
         onConfirm={handleConfirmTerminate}
         onClose={() => setIsConfirmEndSessionOpen(false)}
+      />
+
+      <AlertModal
+        isOpen={isConfirmLeaveSessionOpen}
+        title="Leave Session"
+        message="Are you sure you want to leave this session?"
+        type="confirm"
+        onConfirm={() => {
+          setIsConfirmLeaveSessionOpen(false);
+          socket.emit("leave-session", { sessionId });
+          setSessionId(null);
+        }}
+        onClose={() => setIsConfirmLeaveSessionOpen(false)}
       />
     </>
   )

@@ -1,5 +1,21 @@
 @import "tailwindcss";
 
+html, body {
+  margin: 0;
+  padding: 0;
+  height: 100%;
+  overflow: hidden;
+  background-color: #0a0a0c;
+}
+
+#root {
+  height: 100%;
+  width: 100%;
+  overflow-y: auto;
+  overflow-x: hidden;
+  background-color: #0a0a0c;
+}
+
 /* This targets the Library button and the "More" dropdown specifically */
 .library-button, 
 .layer-ui__wrapper .sidebar-trigger,
@@ -51,4 +67,24 @@
 .excalidraw .layer-ui__wrapper__footer-right {
   /* Only use this if you want to hide the help icon too */
   display: none !important;
+}
+
+/* Custom CSS to handle collapsable properties panel */
+.excalidraw-container.properties-collapsed .excalidraw .App-menu__left {
+  display: none !important;
+  opacity: 0 !important;
+  visibility: hidden !important;
+  pointer-events: none !important;
+}
+
+/* Hide collaborator avatars/initials inside the canvas */
+.excalidraw .live-collaborators,
+.excalidraw .live-collaborators-list,
+.excalidraw .collaborator-avatars {
+  display: none !important;
+  opacity: 0 !important;
+  visibility: hidden !important;
+  width: 0 !important;
+  height: 0 !important;
+  pointer-events: none !important;
 }
