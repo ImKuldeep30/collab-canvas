@@ -77,6 +77,22 @@ const CreateSessionModal = ({ isOpen, onClose, socket, setSessionId }) => {
               </p>
             </div>
 
+            <div className="bg-amber-500/10 border border-amber-500/20 rounded-xl p-3 flex items-start gap-2.5 shadow-inner">
+              <ShieldAlert size={16} className="text-amber-500 shrink-0 mt-0.5" />
+              <div className="flex flex-col gap-1.5 text-[10px] leading-relaxed">
+                <span className="font-bold text-amber-500 uppercase tracking-wider text-[9px]">Local Session Warning</span>
+                <p className="text-amber-400/80">
+                  Data from this session will <strong className="text-amber-400">not be saved</strong> to the cloud. If the admin leaves, there is no rejoin option and all progress is lost.
+                </p>
+                <p className="text-amber-400/80 flex items-center gap-1">
+                  💬 <strong className="text-amber-400">Chats will not be saved</strong> — messages are lost when the session ends.
+                </p>
+                <p className="text-amber-400/90 font-semibold mt-0.5">
+                  Want to save your work &amp; chats? Create a Team instead!
+                </p>
+              </div>
+            </div>
+
             <button
               onClick={handleCreate}
               disabled={isCreating}

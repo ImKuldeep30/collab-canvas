@@ -5,53 +5,67 @@ import "@excalidraw/excalidraw/index.css";
 
 export default function CanvasBoard({ socket, sessionId, canDraw = true, previousSessionData = null, drawingData = [], setDrawingData = null }) {
   const [elements, setElements] = useState([]);
+  const [excalidrawAPI, setExcalidrawAPI] = useState(null);
   const excalidrawRef = useRef(null);
   const collaboratorsRef = useRef(new Map());
   const localElementsRef = useRef([]);
   const syncTimeoutRef = useRef(null);
-  const localVersionSumRef = useRef(0); // Tracks the version sum of elements to prevent unnecessary syncs and echo loops
+  const localVersionSumRef = useRef(0);
+  const lastSyncedVersionsRef = useRef(new Map());
+  const syncedFileIdsRef = useRef(new Set()); // Track which image file IDs we've already broadcast
 
   useEffect(() => {
     if (!socket || !sessionId) return;
 
-    // Receive drawing events
+    // Receive drawing elements from other members
     const handleDraw = (data) => {
       const incomingElements = data.elements;
       if (excalidrawRef.current && incomingElements) {
-        // Merge current scene elements with incoming elements
-        // VERY IMPORTANT: Use localElementsRef instead of getSceneElements() to ensure deleted elements map correctly
         const currentElements = localElementsRef.current;
-        
-        // Create a map of existing elements for quick lookup by ID
         const elementMap = new Map(currentElements.map(el => [el.id, el]));
 
         let hasChanges = false;
 
-        // Reconcile incoming elements based on version
         incomingElements.forEach(incomingEl => {
           const existingEl = elementMap.get(incomingEl.id);
-          // If element is new to us, or its remote version is newer than our local version, overwrite it
           if (!existingEl || incomingEl.version > existingEl.version) {
             elementMap.set(incomingEl.id, incomingEl);
             hasChanges = true;
+            lastSyncedVersionsRef.current.set(incomingEl.id, incomingEl.version);
           }
         });
 
-        // Only update scene and potentially trigger echo if we actually have new data
-        if (!hasChanges) {
-          return;
-        }
+        if (!hasChanges) return;
 
-        // Convert back to array (preserve order as much as possible)
         const mergedElements = Array.from(elementMap.values());
-
-        // Calculate the new version sum of the merged items so we don't bounce it back
         const newVersionSum = mergedElements.reduce((sum, el) => sum + el.version, 0);
-        localVersionSumRef.current = newVersionSum; // Update our known remote state to prevent echo
-        localElementsRef.current = mergedElements; // Update our absolute ref
-
-        // Update the screen with the merged items without wiping out what the current user is drawing
+        localVersionSumRef.current = newVersionSum;
+        localElementsRef.current = mergedElements;
         excalidrawRef.current.updateScene({ elements: mergedElements });
+      }
+    };
+
+    // Receive image file blobs from other members and inject them into Excalidraw
+    const handleSyncFiles = (data) => {
+      const { files } = data;
+      if (!files || !excalidrawRef.current) return;
+
+      const fileEntries = Object.entries(files);
+      if (fileEntries.length === 0) return;
+
+      // Convert to the format Excalidraw's addFiles() expects: BinaryFileData[]
+      const newFiles = fileEntries
+        .filter(([fileId]) => !syncedFileIdsRef.current.has(fileId)) // skip already-known files
+        .map(([fileId, fileData]) => ({
+          id: fileId,
+          dataURL: fileData.dataURL,
+          mimeType: fileData.mimeType,
+          created: fileData.created || Date.now(),
+        }));
+
+      if (newFiles.length > 0) {
+        excalidrawRef.current.addFiles(newFiles);
+        newFiles.forEach(f => syncedFileIdsRef.current.add(f.id));
       }
     };
 
@@ -59,17 +73,13 @@ export default function CanvasBoard({ socket, sessionId, canDraw = true, previou
     const handleCursorMove = (data) => {
       if (excalidrawRef.current) {
         const collaborators = new Map(collaboratorsRef.current);
-        // Assume data.userId is a unique socket id for the remote
         collaborators.set(data.userId, {
           pointer: { x: data.x, y: data.y },
           button: data.button || "up",
-          username: "User " + data.userId.substring(0, 4), // display shortened ID
+          username: "User " + data.userId.substring(0, 4),
           selectedElementIds: data.selectedElementIds || {}
         });
-        
         collaboratorsRef.current = collaborators;
-
-        // Use updateScene to show cursor and selection box
         excalidrawRef.current.updateScene({ collaborators });
       }
     };
@@ -84,76 +94,137 @@ export default function CanvasBoard({ socket, sessionId, canDraw = true, previou
     };
 
     socket.on("draw", handleDraw);
+    socket.on("sync-files", handleSyncFiles);
     socket.on("cursor-move", handleCursorMove);
     socket.on("user-left", handleUserLeft);
 
     return () => {
       socket.off("draw", handleDraw);
+      socket.off("sync-files", handleSyncFiles);
       socket.off("cursor-move", handleCursorMove);
       socket.off("user-left", handleUserLeft);
     };
   }, [socket, sessionId]);
 
-  // Load previous session data when available
+  // Load previous session data (elements + files) when available
   useEffect(() => {
-    if (previousSessionData?.drawingData && previousSessionData.drawingData.length > 0 && excalidrawRef.current) {
+    const api = excalidrawAPI || excalidrawRef.current;
+    if (previousSessionData?.drawingData && previousSessionData.drawingData.length > 0 && api) {
       const previousElements = previousSessionData.drawingData;
+
+      previousElements.forEach(el => {
+        lastSyncedVersionsRef.current.set(el.id, el.version);
+      });
+
       localElementsRef.current = previousElements;
       setElements(previousElements);
-      excalidrawRef.current.updateScene({ elements: previousElements });
-      
+      api.updateScene({ elements: previousElements });
+
+      // Also restore image files if delivered (e.g. from join-accepted or rejoin)
+      if (previousSessionData.files) {
+        const fileEntries = Object.entries(previousSessionData.files);
+        if (fileEntries.length > 0 && api.addFiles) {
+          const filesToAdd = fileEntries
+            .filter(([fileId]) => !syncedFileIdsRef.current.has(fileId))
+            .map(([fileId, fileData]) => ({
+              id: fileId,
+              dataURL: fileData.dataURL,
+              mimeType: fileData.mimeType,
+              created: fileData.created || Date.now(),
+            }));
+          if (filesToAdd.length > 0) {
+            api.addFiles(filesToAdd);
+            filesToAdd.forEach(f => syncedFileIdsRef.current.add(f.id));
+          }
+        }
+      }
+
       if (setDrawingData) {
         setDrawingData(previousElements);
       }
     }
-  }, [previousSessionData, setDrawingData]);
+  }, [previousSessionData, excalidrawAPI, setDrawingData]);
 
 
   const handleChange = (newElements, appState) => {
     if (!socket || !sessionId) return;
 
-    // Maintain local state for the react layer wrapper
     setElements(newElements);
-    localElementsRef.current = newElements; // Always hold the absolute latest including `isDeleted: true` elements
+    localElementsRef.current = newElements;
 
-    if (!canDraw) return; // If blocked from drawing, stop syncing outgoing changes
+    if (!canDraw) return;
 
-    // Calculate a version sum of all objects to see if anything ACTUALLY changed.
-    // If you only moved your mouse or if we just merged remote elements, this sum is the same!
+    // --- Sync new image files ---
+    // Whenever elements change, check for image elements whose file blobs haven't been broadcast yet
+    if (excalidrawRef.current) {
+      const allFiles = excalidrawRef.current.getFiles(); // { [fileId]: BinaryFileData }
+      if (allFiles) {
+        const newFiles = {};
+        Object.entries(allFiles).forEach(([fileId, fileData]) => {
+          if (!syncedFileIdsRef.current.has(fileId)) {
+            newFiles[fileId] = {
+              dataURL: fileData.dataURL,
+              mimeType: fileData.mimeType,
+              created: fileData.created,
+            };
+            syncedFileIdsRef.current.add(fileId);
+          }
+        });
+        if (Object.keys(newFiles).length > 0) {
+          socket.emit("sync-files", { sessionId, files: newFiles });
+        }
+      }
+    }
+
+    // --- Sync elements ---
     const currentVersionSum = newElements.reduce((sum, el) => sum + el.version, 0);
 
     if (currentVersionSum === localVersionSumRef.current) {
-      return; // Nothing changed in the shapes (likely just a cursor move, selection, or remote echo)
+      return;
     }
 
-    localVersionSumRef.current = currentVersionSum; // Update local tracker
+    localVersionSumRef.current = currentVersionSum;
 
-    // THROTTLE: Only emit 20 times a second max to prevent massive network lag and heavy serialization
     if (!syncTimeoutRef.current) {
       syncTimeoutRef.current = setTimeout(() => {
         let elementsToSync = localElementsRef.current;
         if (excalidrawRef.current) {
-          // ALWAYS use getSceneElementsIncludingDeleted to ensure remote clients
-          // know which items were erased. Otherwise, they never receive the isDeleted: true flag!
           elementsToSync = excalidrawRef.current.getSceneElementsIncludingDeleted();
         }
-        
-        socket.emit("draw", { 
-          sessionId, 
-          elements: elementsToSync
+
+        const changedElements = [];
+        const lastVersions = lastSyncedVersionsRef.current;
+
+        elementsToSync.forEach(el => {
+          const lastVersion = lastVersions.get(el.id);
+          if (lastVersion === undefined || el.version > lastVersion) {
+            changedElements.push(el);
+            lastVersions.set(el.id, el.version);
+          }
         });
+
+        if (changedElements.length > 0) {
+          socket.emit("draw", { sessionId, elements: changedElements });
+        }
+
         syncTimeoutRef.current = null;
-      }, 50); // 50ms = 20 fps network sync
+      }, 50);
     }
   };
 
+  const lastCursorEmitTimeRef = useRef(0);
+
   const handlePointerUpdate = (payload) => {
      if (!socket || !sessionId) return;
-     if (!canDraw) return; // Prevent sending pointer updates if not allowed
+     if (!canDraw) return;
 
-     socket.emit("cursor-move", { 
-       sessionId, 
-       x: payload.pointer.x, 
+     const now = Date.now();
+     if (now - lastCursorEmitTimeRef.current < 80) return;
+     lastCursorEmitTimeRef.current = now;
+
+     socket.emit("cursor-move", {
+       sessionId,
+       x: payload.pointer.x,
        y: payload.pointer.y,
        button: payload.button || "up",
        selectedElementIds: payload.selectedElementIds || {}
@@ -164,18 +235,26 @@ export default function CanvasBoard({ socket, sessionId, canDraw = true, previou
     <div style={{ height: "100%", width: "100%" }}>
       <Excalidraw
         viewModeEnabled={!canDraw}
-        excalidrawAPI={(api) => excalidrawRef.current = api}
+        excalidrawAPI={(api) => {
+          excalidrawRef.current = api;
+          if (api) {
+            if (api !== excalidrawAPI) {
+              setTimeout(() => setExcalidrawAPI(api), 0);
+            }
+          } else {
+            if (excalidrawAPI !== null) {
+              setTimeout(() => setExcalidrawAPI(null), 0);
+            }
+          }
+        }}
         onChange={handleChange}
         onPointerUpdate={handlePointerUpdate}
-        // 1. Force the Library menu and its triggers to be null
         renderLibraryMenu={() => null}
-        // 2. Hide the Library button and any custom UI in the top right
         renderTopRightUI={() => null}
-        // 3. Disable specific UI actions and elements
         renderMobileMenu={() => null}
         UIOptions={{
           canvasActions: {
-            help: false, // This removes the Help button (bottom right)
+            help: false,
           }
         }}
       >

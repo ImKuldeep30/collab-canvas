@@ -1,4 +1,5 @@
 const Team = require('../models/Team');
+const SessionData = require('../models/SessionData');
 
 function generateTeamId() {
     return Math.random().toString(36).substr(2, 8).toUpperCase();
@@ -49,6 +50,15 @@ exports.joinTeam = async (req, res) => {
 
         team.pendingMembers.push(userId);
         await team.save();
+
+        const io = req.app.get("socketio");
+        if (io && team.createdBy) {
+            io.to("user_room_" + team.createdBy.toString()).emit("new-notification", {
+                teamId: team.teamId,
+                teamName: team.name,
+                userId: userId
+            });
+        }
 
         res.status(200).json({ message: 'Join request sent successfully', team });
     } catch (error) {
@@ -167,6 +177,82 @@ exports.kickMember = async (req, res) => {
             .populate('createdBy', 'name');
 
         res.status(200).json({ message: 'Member kicked', team: updatedTeam });
+    } catch (error) {
+        res.status(500).json({ message: error.message });
+    }
+};
+
+exports.editDescription = async (req, res) => {
+    try {
+        const { teamId, description } = req.body;
+        const adminId = req.user.id;
+
+        const team = await Team.findOne({ teamId });
+        if (!team) return res.status(404).json({ message: 'Team not found' });
+
+        if (team.createdBy.toString() !== adminId) {
+            return res.status(403).json({ message: 'Only admin can edit team description' });
+        }
+
+        team.description = description;
+        await team.save();
+
+        const updatedTeam = await Team.findOne({ teamId })
+            .populate('members', 'name email')
+            .populate('pendingMembers', 'name email')
+            .populate('createdBy', 'name');
+
+        res.status(200).json({ message: 'Team description updated', team: updatedTeam });
+    } catch (error) {
+        res.status(500).json({ message: error.message });
+    }
+};
+
+exports.deleteTeam = async (req, res) => {
+    try {
+        const { teamId } = req.body;
+        const adminId = req.user.id;
+
+        const team = await Team.findOne({ teamId });
+        if (!team) return res.status(404).json({ message: 'Team not found' });
+
+        if (team.createdBy.toString() !== adminId) {
+            return res.status(403).json({ message: 'Only admin can delete this team' });
+        }
+
+        // Clean up socket session if active
+        const io = req.app.get('socketio');
+        const sessions = req.app.get('sessions');
+        const sessionDrawingData = req.app.get('sessionDrawingData');
+        const sessionTimeouts = req.app.get('sessionTimeouts');
+        
+        if (sessions && io) {
+            let foundSessionId = null;
+            for (const [sessionId, session] of sessions.entries()) {
+                if (session.teamId === teamId) {
+                    foundSessionId = sessionId;
+                    break;
+                }
+            }
+            if (foundSessionId) {
+                io.to(foundSessionId).emit("session-terminated", { sessionId: foundSessionId, message: "The team has been deleted by the admin." });
+                io.in(foundSessionId).socketsLeave(foundSessionId);
+                if (sessionDrawingData) sessionDrawingData.delete(foundSessionId);
+                if (sessionTimeouts) {
+                    const timeoutId = sessionTimeouts.get(foundSessionId);
+                    if (timeoutId) clearTimeout(timeoutId);
+                    sessionTimeouts.delete(foundSessionId);
+                }
+                sessions.delete(foundSessionId);
+                console.log(`Socket session for deleted team ${teamId} cleaned up successfully`);
+            }
+        }
+
+        // Delete team and its session data from database
+        await Team.deleteOne({ teamId });
+        await SessionData.deleteMany({ teamId });
+
+        res.status(200).json({ message: 'Team deleted successfully' });
     } catch (error) {
         res.status(500).json({ message: error.message });
     }

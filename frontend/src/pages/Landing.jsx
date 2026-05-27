@@ -14,7 +14,7 @@ export default function Landing() {
       
       {/* Background Decorative Blur Blobs */}
       <div className="absolute top-[-10%] left-[-10%] w-[50vw] h-[50vw] bg-indigo-500/10 rounded-full blur-[130px] pointer-events-none z-0"></div>
-      <div className="absolute bottom-[10%] right-[-10%] w-[45vw] h-[45vw] bg-pink-500/10 rounded-full blur-[130px] pointer-events-none z-0"></div>
+      <div className="absolute bottom-[-10%] right-[-10%] w-[45vw] h-[45vw] bg-pink-500/10 rounded-full blur-[130px] pointer-events-none z-0"></div>
       <div className="absolute top-[40%] left-[30%] w-[35vw] h-[35vw] bg-purple-500/5 rounded-full blur-[130px] pointer-events-none z-0"></div>
 
       {/* Header / Navbar */}

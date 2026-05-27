@@ -1,22 +1,43 @@
 import { useState, useEffect, useRef } from "react";
-import { X, Send, Trash2, ShieldAlert, MessageSquare } from "lucide-react";
+import { X, Send, Trash2, MessageSquare } from "lucide-react";
+
+// Format timestamp: always show time; show date only if the message is from a previous day
+const formatTimestamp = (ts) => {
+  if (!ts) return "";
+  const date = new Date(ts);
+  if (isNaN(date.getTime())) return "";
+
+  const now = new Date();
+  const isToday =
+    date.getDate() === now.getDate() &&
+    date.getMonth() === now.getMonth() &&
+    date.getFullYear() === now.getFullYear();
+
+  const time = date.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" });
+  if (isToday) return time;
+
+  const dateStr = date.toLocaleDateString([], { day: "numeric", month: "short" });
+  return `${dateStr}, ${time}`;
+};
 
 export default function ChatPanel({ socket, sessionId, onClose, messages, isAdmin, isChatEnabled }) {
   const [inputMessage, setInputMessage] = useState("");
-  const messagesEndRef = useRef(null);
+  const messagesContainerRef = useRef(null);
 
   useEffect(() => {
-    messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
+    if (messagesContainerRef.current) {
+      messagesContainerRef.current.scrollTo({
+        top: messagesContainerRef.current.scrollHeight,
+        behavior: "smooth",
+      });
+    }
   }, [messages]);
 
   const sendMessage = (e) => {
     e.preventDefault();
     if (inputMessage.trim() && socket && sessionId) {
       if (!isAdmin && !isChatEnabled) return;
-      socket.emit("send-chat", {
-        sessionId,
-        message: inputMessage.trim(),
-      });
+      socket.emit("send-chat", { sessionId, message: inputMessage.trim() });
       setInputMessage("");
     }
   };
@@ -35,25 +56,28 @@ export default function ChatPanel({ socket, sessionId, onClose, messages, isAdmi
 
   return (
     <div className="flex flex-col h-full bg-transparent text-white w-full">
-      {/* Header */}
+
+      {/* ── Header ── */}
       <div className="flex justify-between items-center p-4 border-b border-white/10 shrink-0">
         <h3 className="text-white font-black tracking-tight text-sm flex items-center gap-2">
           <MessageSquare size={16} className="text-indigo-400" />
           Session Chat
         </h3>
+
         <div className="flex items-center gap-2">
           {isAdmin && (
             <>
               <button
                 onClick={handleToggleChat}
                 className={`text-[10px] font-extrabold px-2.5 py-1.5 rounded-lg border transition-all cursor-pointer ${
-                  isChatEnabled 
-                    ? 'bg-rose-500/10 border-rose-500/20 text-rose-400 hover:bg-rose-500 hover:text-white hover:border-transparent' 
-                    : 'bg-emerald-500/10 border-emerald-500/20 text-emerald-400 hover:bg-emerald-500 hover:text-white hover:border-transparent'
+                  isChatEnabled
+                    ? "bg-rose-500/10 border-rose-500/20 text-rose-400 hover:bg-rose-500 hover:text-white hover:border-transparent"
+                    : "bg-emerald-500/10 border-emerald-500/20 text-emerald-400 hover:bg-emerald-500 hover:text-white hover:border-transparent"
                 }`}
               >
-                {isChatEnabled ? 'Disable Chat' : 'Enable Chat'}
+                {isChatEnabled ? "Disable Chat" : "Enable Chat"}
               </button>
+
               <button
                 onClick={handleClearChats}
                 title="Clear Chat History"
@@ -63,6 +87,7 @@ export default function ChatPanel({ socket, sessionId, onClose, messages, isAdmi
               </button>
             </>
           )}
+
           <button
             onClick={onClose}
             className="text-gray-400 hover:text-white p-1 rounded-lg hover:bg-white/5 transition-colors cursor-pointer"
@@ -72,8 +97,11 @@ export default function ChatPanel({ socket, sessionId, onClose, messages, isAdmi
         </div>
       </div>
 
-      {/* Messages Area */}
-      <div className="flex-1 overflow-y-auto p-4 space-y-4 scrollbar-thin scrollbar-thumb-white/10 scrollbar-track-transparent">
+      {/* ── Messages Area ── */}
+      <div
+        ref={messagesContainerRef}
+        className="flex-1 overflow-y-auto p-4 space-y-4 scrollbar-thin scrollbar-thumb-white/10 scrollbar-track-transparent"
+      >
         {messages.length === 0 ? (
           <div className="text-center py-12 flex flex-col items-center justify-center h-full opacity-60">
             <div className="w-14 h-14 bg-gradient-to-tr from-indigo-500/10 to-purple-500/10 border border-indigo-500/20 text-indigo-400 rounded-2xl flex items-center justify-center mb-4 shadow-[0_8px_32px_rgba(99,102,241,0.08)]">
@@ -86,17 +114,22 @@ export default function ChatPanel({ socket, sessionId, onClose, messages, isAdmi
           </div>
         ) : (
           messages.map((msg, index) => {
-            const isMe = msg.socketId === socket.id;
+            const isMe = msg.socketId === socket?.id;
+            const timeLabel = formatTimestamp(msg.timestamp);
+
             return (
               <div
                 key={index}
                 className={`flex flex-col ${isMe ? "items-end" : "items-start"}`}
               >
+                {/* Sender name — shown only for other people's messages */}
                 {!isMe && (
-                  <span className="text-[10px] text-indigo-400 mb-1.5 ml-1 font-extrabold tracking-wide">
+                  <span className="text-[10px] text-indigo-400 mb-1 ml-1 font-extrabold tracking-wide">
                     {msg.username}
                   </span>
                 )}
+
+                {/* Message bubble */}
                 <div
                   className={`px-3.5 py-2.5 rounded-2xl text-xs max-w-[85%] break-words shadow-sm leading-relaxed ${
                     isMe
@@ -106,14 +139,24 @@ export default function ChatPanel({ socket, sessionId, onClose, messages, isAdmi
                 >
                   {msg.message}
                 </div>
+
+                {/* Timestamp below bubble */}
+                {timeLabel && (
+                  <span
+                    className={`text-[9px] text-gray-500 mt-1 font-medium select-none ${
+                      isMe ? "mr-0.5" : "ml-0.5"
+                    }`}
+                  >
+                    {timeLabel}
+                  </span>
+                )}
               </div>
             );
           })
         )}
-        <div ref={messagesEndRef} />
       </div>
 
-      {/* Input Area */}
+      {/* ── Input Area ── */}
       <div className="p-4 border-t border-white/10 shrink-0">
         <form onSubmit={sendMessage} className="flex gap-2">
           <input
@@ -121,7 +164,9 @@ export default function ChatPanel({ socket, sessionId, onClose, messages, isAdmi
             value={inputMessage}
             onChange={(e) => setInputMessage(e.target.value)}
             disabled={!isChatEnabled && !isAdmin}
-            placeholder={!isChatEnabled && !isAdmin ? "Chat has been disabled" : "Type a message..."}
+            placeholder={
+              !isChatEnabled && !isAdmin ? "Chat has been disabled" : "Type a message..."
+            }
             className="flex-1 bg-black/40 border border-white/10 rounded-xl px-4 py-2.5 text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-indigo-500/30 focus:border-indigo-500 text-xs shadow-inner disabled:opacity-50 disabled:cursor-not-allowed"
           />
           <button

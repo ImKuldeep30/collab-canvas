@@ -60,8 +60,8 @@ const Register = () => {
     <div className="min-h-screen w-screen flex items-center justify-center bg-[#0a0a0c] px-4 relative overflow-hidden">
       
       {/* Background Decorative Blur Blobs */}
-      <div className="absolute top-1/4 left-1/4 w-96 h-96 bg-indigo-500/10 rounded-full blur-[120px] pointer-events-none"></div>
-      <div className="absolute bottom-1/4 right-1/4 w-96 h-96 bg-pink-500/10 rounded-full blur-[120px] pointer-events-none"></div>
+      <div className="absolute top-[-10%] left-[-10%] w-96 h-96 bg-indigo-500/10 rounded-full blur-[120px] pointer-events-none"></div>
+      <div className="absolute bottom-[-10%] right-[-10%] w-96 h-96 bg-pink-500/10 rounded-full blur-[120px] pointer-events-none"></div>
 
       <div className="w-full max-w-md bg-[#121214]/80 backdrop-blur-xl border border-white/10 p-8 rounded-2xl shadow-[0_25px_50px_rgba(0,0,0,0.6),_0_0_0_1px_rgba(255,255,255,0.03)] relative z-10 animate-in fade-in slide-in-from-bottom-8 duration-500">
         

@@ -11,7 +11,7 @@ import NotificationsModal from './NotificationsModal';
 import JoinSessionModal from './JoinSessionModal';
 import AlertModal from './AlertModal';
 
-const Navbar = ({ socket, sessionId, setSessionId, isAdmin, setIsAdmin, onToggleParticipants, joinRequestsCount }) => {
+const Navbar = ({ socket, sessionId, setSessionId, isAdmin, setIsAdmin, onToggleParticipants, joinRequestsCount, setTeamInfo, setPreviousSessionData, setDrawingData, setChatMessages }) => {
   const [isProfileOpen, setIsProfileOpen] = useState(false);
   const [isSettingsOpen, setIsSettingsOpen] = useState(false);
   const [isUpdateProfileModalOpen, setIsUpdateProfileModalOpen] = useState(false);
@@ -62,6 +62,18 @@ const Navbar = ({ socket, sessionId, setSessionId, isAdmin, setIsAdmin, onToggle
   useEffect(() => {
     fetchNotificationCount();
   }, []);
+
+  useEffect(() => {
+    if (socket) {
+      const handleNewNotification = () => {
+        setNotificationCount((prev) => prev + 1);
+      };
+      socket.on("new-notification", handleNewNotification);
+      return () => {
+        socket.off("new-notification", handleNewNotification);
+      };
+    }
+  }, [socket]);
 
   useEffect(() => {
     const handleClickOutside = (event) => {
@@ -134,7 +146,7 @@ const Navbar = ({ socket, sessionId, setSessionId, isAdmin, setIsAdmin, onToggle
           if (localUser) {
             try {
               setUser(JSON.parse(localUser));
-            } catch (e) {
+            } catch {
               console.error("Error parsing local user data");
             }
           }
@@ -205,7 +217,7 @@ const Navbar = ({ socket, sessionId, setSessionId, isAdmin, setIsAdmin, onToggle
 
   return (
     <>
-      <div className="h-12 w-full max-w-6xl mx-auto text-white flex items-center justify-between px-2 md:px-4 rounded-xl border border-white/15 bg-gradient-to-r from-indigo-500/[0.07] via-[#121214]/85 to-pink-500/[0.07] backdrop-blur-md shadow-[0_8px_32px_rgba(99,102,241,0.08),_0_8px_32px_rgba(0,0,0,0.5),_0_0_0_1px_rgba(255,255,255,0.05)] transition-all duration-300">
+      <div className="h-12 w-full max-w-6xl mx-auto text-white flex items-center justify-between px-2 md:px-4 rounded-xl border border-white/15 bg-gradient-to-r from-indigo-500/[0.07] to-[#121214]/85 backdrop-blur-md shadow-[0_8px_32px_rgba(99,102,241,0.08),_0_8px_32px_rgba(0,0,0,0.5),_0_0_0_1px_rgba(255,255,255,0.05)] transition-all duration-300">
         
         {/* Left Side: Brand & Logo */}
         <div className="flex items-center gap-1.5 md:gap-2 cursor-pointer group" onClick={() => navigate("/main")}>
@@ -280,6 +292,22 @@ const Navbar = ({ socket, sessionId, setSessionId, isAdmin, setIsAdmin, onToggle
             </button>
           )}
 
+          {sessionId && !isAdmin && (
+            <button
+              onClick={() => {
+                if (window.confirm("Are you sure you want to leave this session?")) {
+                  socket.emit("leave-session", { sessionId });
+                  setSessionId(null);
+                }
+              }}
+              className="text-rose-400 hover:text-white bg-rose-500/10 hover:bg-rose-600 border border-rose-500/20 hover:border-transparent px-2 py-1 md:px-2.5 md:py-1.5 rounded-lg transition-all duration-200 flex items-center gap-1 cursor-pointer"
+              title="Leave Session"
+            >
+              <LogOut size={14} />
+              <span className="text-[11px] font-semibold hidden lg:inline">Leave Session</span>
+            </button>
+          )}
+
           {sessionId && (
             <button 
               onClick={onToggleParticipants}
@@ -299,16 +327,28 @@ const Navbar = ({ socket, sessionId, setSessionId, isAdmin, setIsAdmin, onToggle
           {/* Invite & Join buttons now placed on the right */}
           <button
             onClick={handleInvite}
-            className="px-2.5 py-1.5 md:px-3.5 md:py-1.5 text-xs font-bold rounded-lg text-white bg-gradient-to-r from-indigo-500 via-purple-500 to-pink-500 hover:opacity-95 transition-all duration-200 shadow-[0_2px_10px_rgba(99,102,241,0.2)] flex items-center gap-1.5 cursor-pointer active:scale-95 group border-none"
+            disabled={!!sessionId}
+            title={sessionId ? "Cannot invite while in an active session" : ""}
+            className={`px-2.5 py-1.5 md:px-3.5 md:py-1.5 text-xs font-bold rounded-lg text-white transition-all duration-200 flex items-center gap-1.5 border-none ${
+              sessionId 
+                ? "bg-gray-500/50 cursor-not-allowed opacity-50 shadow-none" 
+                : "bg-gradient-to-r from-indigo-500 via-purple-500 to-pink-500 hover:opacity-95 shadow-[0_2px_10px_rgba(99,102,241,0.2)] cursor-pointer active:scale-95 group"
+            }`}
           >
             <UserPlus size={14} className="text-white" />
             <span className="hidden lg:inline">Invite</span>
           </button>
           <button
             onClick={handleJoin}
-            className="px-2.5 py-1.5 md:px-3.5 md:py-1.5 text-xs font-semibold rounded-lg text-gray-200 hover:text-white bg-white/5 hover:bg-white/10 border border-white/10 hover:border-white/20 transition-all duration-200 flex items-center gap-1.5 cursor-pointer active:scale-95 group"
+            disabled={!!sessionId}
+            title={sessionId ? "Cannot join while in an active session" : ""}
+            className={`px-2.5 py-1.5 md:px-3.5 md:py-1.5 text-xs font-semibold rounded-lg text-gray-200 transition-all duration-200 flex items-center gap-1.5 ${
+              sessionId
+                ? "bg-white/5 border border-white/5 cursor-not-allowed opacity-50"
+                : "hover:text-white bg-white/5 hover:bg-white/10 border border-white/10 hover:border-white/20 cursor-pointer active:scale-95 group"
+            }`}
           >
-            <LogIn size={14} className="text-gray-300 group-hover:text-white transition-colors" />
+            <LogIn size={14} className={`transition-colors ${sessionId ? "text-gray-500" : "text-gray-300 group-hover:text-white"}`} />
             <span className="hidden lg:inline">Join</span>
           </button>
 
@@ -322,8 +362,8 @@ const Navbar = ({ socket, sessionId, setSessionId, isAdmin, setIsAdmin, onToggle
               <Bell size={16} strokeWidth={2} />
               {notificationCount > 0 && (
                 <span className="absolute -top-0.5 -right-0.5 flex h-3.5 w-3.5">
-                  <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-rose-400 opacity-75"></span>
-                  <span className="relative inline-flex rounded-full h-3.5 w-3.5 bg-rose-500 justify-center items-center text-[8px] font-bold text-white">
+                  <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-red-500 opacity-75"></span>
+                  <span className="relative inline-flex rounded-full h-3.5 w-3.5 bg-red-500 justify-center items-center text-[8px] font-extrabold text-white border border-white/20">
                     {notificationCount}
                   </span>
                 </span>
@@ -548,8 +588,13 @@ const Navbar = ({ socket, sessionId, setSessionId, isAdmin, setIsAdmin, onToggle
         isOpen={isMyTeamsOpen}
         onClose={() => setIsMyTeamsOpen(false)}
         socket={socket}
+        sessionId={sessionId}
         setSessionId={setSessionId}
         setIsAdmin={setIsAdmin}
+        setTeamInfo={setTeamInfo}
+        setPreviousSessionData={setPreviousSessionData}
+        setDrawingData={setDrawingData}
+        setChatMessages={setChatMessages}
       />
 
       <AlertModal
