@@ -21,34 +21,7 @@ const getVerificationEmailTemplate = (name, url) => `
             <table align="center" border="0" cellpadding="0" cellspacing="0">
               <tr>
                 <td style="width: 60px; height: 60px; text-align: center; vertical-align: middle;">
-                  <svg width="60" height="60" viewBox="0 0 32 32" fill="none" xmlns="http://www.w3.org/2000/svg">
-                    <defs>
-                      <linearGradient id="face-top-mail" x1="16" y1="3" x2="16" y2="16" gradientUnits="userSpaceOnUse">
-                        <stop offset="0%" stop-color="#818cf8" />
-                        <stop offset="100%" stop-color="#6366f1" />
-                      </linearGradient>
-                      <linearGradient id="face-left-mail" x1="5" y1="16" x2="16" y2="29" gradientUnits="userSpaceOnUse">
-                        <stop offset="0%" stop-color="#a855f7" stop-opacity="0.85" />
-                        <stop offset="100%" stop-color="#7c3aed" stop-opacity="0.85" />
-                      </linearGradient>
-                      <linearGradient id="face-right-mail" x1="16" y1="16" x2="27" y2="22.5" gradientUnits="userSpaceOnUse">
-                        <stop offset="0%" stop-color="#ec4899" stop-opacity="0.9" />
-                        <stop offset="100%" stop-color="#db2777" stop-opacity="0.9" />
-                      </linearGradient>
-                    </defs>
-                    <g>
-                      <!-- Top Face -->
-                      <path d="M16 3L27 9.5L16 16L5 9.5Z" fill="url(#face-top-mail)" />
-                      <!-- Left Face -->
-                      <path d="M5 9.5L16 16V29L5 22.5Z" fill="url(#face-left-mail)" />
-                      <!-- Right Face -->
-                      <path d="M27 9.5L16 16V29L27 22.5Z" fill="url(#face-right-mail)" />
-                      
-                      <!-- Grid outlines -->
-                      <path d="M16 3L27 9.5V22.5L16 29L5 22.5V9.5Z" stroke="#ffffff" stroke-width="1.2" stroke-linejoin="round" opacity="0.3" />
-                      <path d="M16 16L5 9.5M16 16L27 9.5M16 16V29" stroke="#ffffff" stroke-width="1.2" stroke-linejoin="round" opacity="0.3" />
-                    </g>
-                  </svg>
+                  <img src="${FRONTEND_URL}/cocanvas-logo.svg" width="60" height="60" alt="CoCanvas Logo" style="display: block; border: 0; outline: none; text-decoration: none; margin: 0 auto;" />
                 </td>
               </tr>
             </table>
@@ -99,34 +72,7 @@ const getForgotPasswordEmailTemplate = (name, url) => `
             <table align="center" border="0" cellpadding="0" cellspacing="0">
               <tr>
                 <td style="width: 60px; height: 60px; text-align: center; vertical-align: middle;">
-                  <svg width="60" height="60" viewBox="0 0 32 32" fill="none" xmlns="http://www.w3.org/2000/svg">
-                    <defs>
-                      <linearGradient id="face-top-reset" x1="16" y1="3" x2="16" y2="16" gradientUnits="userSpaceOnUse">
-                        <stop offset="0%" stop-color="#818cf8" />
-                        <stop offset="100%" stop-color="#6366f1" />
-                      </linearGradient>
-                      <linearGradient id="face-left-reset" x1="5" y1="16" x2="16" y2="29" gradientUnits="userSpaceOnUse">
-                        <stop offset="0%" stop-color="#a855f7" stop-opacity="0.85" />
-                        <stop offset="100%" stop-color="#7c3aed" stop-opacity="0.85" />
-                      </linearGradient>
-                      <linearGradient id="face-right-reset" x1="16" y1="16" x2="27" y2="22.5" gradientUnits="userSpaceOnUse">
-                        <stop offset="0%" stop-color="#ec4899" stop-opacity="0.9" />
-                        <stop offset="100%" stop-color="#db2777" stop-opacity="0.9" />
-                      </linearGradient>
-                    </defs>
-                    <g>
-                      <!-- Top Face -->
-                      <path d="M16 3L27 9.5L16 16L5 9.5Z" fill="url(#face-top-reset)" />
-                      <!-- Left Face -->
-                      <path d="M5 9.5L16 16V29L5 22.5Z" fill="url(#face-left-reset)" />
-                      <!-- Right Face -->
-                      <path d="M27 9.5L16 16V29L27 22.5Z" fill="url(#face-right-reset)" />
-                      
-                      <!-- Grid outlines -->
-                      <path d="M16 3L27 9.5V22.5L16 29L5 22.5V9.5Z" stroke="#ffffff" stroke-width="1.2" stroke-linejoin="round" opacity="0.3" />
-                      <path d="M16 16L5 9.5M16 16L27 9.5M16 16V29" stroke="#ffffff" stroke-width="1.2" stroke-linejoin="round" opacity="0.3" />
-                    </g>
-                  </svg>
+                  <img src="${FRONTEND_URL}/cocanvas-logo.svg" width="60" height="60" alt="CoCanvas Logo" style="display: block; border: 0; outline: none; text-decoration: none; margin: 0 auto;" />
                 </td>
               </tr>
             </table>
