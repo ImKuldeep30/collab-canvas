@@ -163,7 +163,7 @@ const MyTeamsModal = ({ isOpen, onClose, socket, sessionId, setSessionId, setIsA
     setActiveSession(null);
     try {
       const token = localStorage.getItem("accessToken");
-      const response = await axios.get(`http://192.168.1.10:3000/api/teams/${teamId}`, {
+      const response = await axios.get((import.meta.env.VITE_BACKEND_URL || "http://192.168.1.10:3000") + `/api/teams/${teamId}`, {
         headers: { Authorization: `Bearer ${token}` }
       });
       setSelectedTeam(response.data);
@@ -187,7 +187,7 @@ const MyTeamsModal = ({ isOpen, onClose, socket, sessionId, setSessionId, setIsA
   const handleAction = async (endpoint, payload) => {
     try {
       const token = localStorage.getItem("accessToken");
-      const response = await axios.post(`http://192.168.1.10:3000/api/teams/${endpoint}`, 
+      const response = await axios.post((import.meta.env.VITE_BACKEND_URL || "http://192.168.1.10:3000") + `/api/teams/${endpoint}`,  
         { teamId: selectedTeam?.teamId, ...payload },
         { headers: { Authorization: `Bearer ${token}` } }
       );

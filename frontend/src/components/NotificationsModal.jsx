@@ -38,7 +38,7 @@ const NotificationsModal = ({ isOpen, onClose }) => {
   const handleAction = async (teamId, userId, action) => {
     try {
       const token = localStorage.getItem("accessToken");
-      await axios.post(`http://192.168.1.10:3000/api/teams/handle-request`, 
+      await axios.post((import.meta.env.VITE_BACKEND_URL || "http://192.168.1.10:3000") + `/api/teams/handle-request`, 
         { teamId, userId, action },
         { headers: { Authorization: `Bearer ${token}` } }
       );

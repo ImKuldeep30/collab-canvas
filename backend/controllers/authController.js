@@ -1107,7 +1107,7 @@ exports.resendVerificationEmail = async (req, res) => {
     await user.save();
 
     // Send verification email
-    const url = `http://localhost:3000/api/auth/verify-email/${verificationToken}`;
+    const url = `${BACKEND_URL}/api/auth/verify-email/${verificationToken}`;
     await resend.emails.send({
       from: process.env.EMAIL_FROM || "CoCanvas <onboarding@resend.dev>",
       to: user.email,
