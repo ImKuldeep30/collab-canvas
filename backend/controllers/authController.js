@@ -55,6 +55,11 @@ const getVerificationEmailTemplate = (name, url) => `
           <p style="color: #4b5563; font-size: 10px; font-weight: 600; margin: 0;">
             &copy; ${new Date().getFullYear()} CoCanvas. All rights reserved.
           </p>
+          
+          <!-- Unique marker to prevent Gmail from grouping and trimming email content -->
+          <div style="display: none !important; font-size: 1px; color: #0a0a0c; line-height: 1px; max-height: 0px; max-width: 0px; opacity: 0; overflow: hidden; height: 0; width: 0;">
+            ${Date.now()}-${Math.random().toString(36).substring(2, 7)}
+          </div>
         </td>
       </tr>
     </table>
@@ -106,6 +111,11 @@ const getForgotPasswordEmailTemplate = (name, url) => `
           <p style="color: #4b5563; font-size: 10px; font-weight: 600; margin: 0;">
             &copy; ${new Date().getFullYear()} CoCanvas. All rights reserved.
           </p>
+          
+          <!-- Unique marker to prevent Gmail from grouping and trimming email content -->
+          <div style="display: none !important; font-size: 1px; color: #0a0a0c; line-height: 1px; max-height: 0px; max-width: 0px; opacity: 0; overflow: hidden; height: 0; width: 0;">
+            ${Date.now()}-${Math.random().toString(36).substring(2, 7)}
+          </div>
         </td>
       </tr>
     </table>
@@ -560,101 +570,237 @@ exports.showResetPasswordForm = async (req, res) => {
     });
 
     if (!user) {
-      return res.status(400).json({ message: "Invalid or expired token" });
+      return res.status(400).send(`
+        <!DOCTYPE html>
+        <html>
+        <head>
+          <meta charset="UTF-8">
+          <meta name="viewport" content="width=device-width, initial-scale=1.0">
+          <title>Invalid Token | CoCanvas</title>
+          <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+          <style>
+            body {
+              margin: 0; padding: 0; background-color: #0a0a0c;
+              font-family: 'Plus Jakarta Sans', sans-serif;
+              display: flex; justify-content: center; align-items: center; min-height: 100vh;
+              color: #ffffff; overflow: hidden; position: relative;
+            }
+            .blob-1 { position: absolute; top: -10%; left: -10%; width: 400px; height: 400px; background: rgba(99, 102, 241, 0.1); border-radius: 50%; filter: blur(100px); pointer-events: none; z-index: 0; }
+            .container {
+              background-color: rgba(18, 18, 20, 0.8); backdrop-filter: blur(20px); -webkit-backdrop-filter: blur(20px);
+              padding: 40px; border-radius: 24px; width: 90%; max-width: 400px;
+              border: 1px solid rgba(255, 255, 255, 0.08); text-align: center; z-index: 10;
+            }
+            h2 { color: #f43f5e; font-size: 22px; font-weight: 800; margin: 0 0 12px 0; }
+            p { color: #9ca3af; font-size: 14px; margin: 0; line-height: 1.5; }
+          </style>
+        </head>
+        <body>
+          <div class="blob-1"></div>
+          <div class="container">
+            <h2>Link Expired or Invalid ❌</h2>
+            <p>This password reset link is invalid or has expired. Please request a new one.</p>
+          </div>
+        </body>
+        </html>
+      `);
     }
 
     // Send an HTML form where user can enter their new password
     const html = `
       <!DOCTYPE html>
-        <html>
-        <head>
-          <title>Reset Password</title>
-          <style>
-            body {
-              margin: 0;
-              padding: 0;
-              background-color: #171717;
-              font-family: Arial, sans-serif;
-              display: flex;
-              justify-content: center;
-              align-items: center;
-              height: 100vh;
-            }
+      <html>
+      <head>
+        <meta charset="UTF-8">
+        <meta name="viewport" content="width=device-width, initial-scale=1.0">
+        <title>Reset Password | CoCanvas</title>
+        <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+        <style>
+          body {
+            margin: 0;
+            padding: 0;
+            background-color: #0a0a0c;
+            font-family: 'Plus Jakarta Sans', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            min-height: 100vh;
+            color: #ffffff;
+            overflow: hidden;
+            position: relative;
+          }
 
-            .container {
-              background-color: #1f1f1f;
-              padding: 40px;
-              border-radius: 16px;
-              width: 100%;
-              max-width: 400px;
-              box-shadow: 0 10px 25px rgba(0, 0, 0, 0.5);
-            }
+          /* Background Blur Blobs */
+          .blob-1 {
+            position: absolute;
+            top: -10%;
+            left: -10%;
+            width: 450px;
+            height: 450px;
+            background: rgba(99, 102, 241, 0.1);
+            border-radius: 50%;
+            filter: blur(120px);
+            pointer-events: none;
+            z-index: 0;
+          }
 
-            h2 {
-              text-align: center;
-              color: white;
-              margin-bottom: 20px;
-            }
+          .blob-2 {
+            position: absolute;
+            bottom: -10%;
+            right: -10%;
+            width: 450px;
+            height: 450px;
+            background: rgba(236, 72, 153, 0.1);
+            border-radius: 50%;
+            filter: blur(120px);
+            pointer-events: none;
+            z-index: 0;
+          }
 
-            p {
-              text-align: center;
-              color: #aaa;
-              font-size: 14px;
-              margin-bottom: 20px;
-            }
+          .container {
+            background-color: rgba(18, 18, 20, 0.8);
+            backdrop-filter: blur(20px);
+            -webkit-backdrop-filter: blur(20px);
+            padding: 40px;
+            border-radius: 24px;
+            width: 90%;
+            max-width: 400px;
+            border: 1px solid rgba(255, 255, 255, 0.08);
+            box-shadow: 0 25px 50px rgba(0, 0, 0, 0.6), 0 0 0 1px rgba(255, 255, 255, 0.03);
+            text-align: center;
+            z-index: 10;
+            box-sizing: border-box;
+          }
 
-            input {
-              width: 100%;
-              padding: 12px;
-              margin: 10px 0;
-              border-radius: 8px;
-              border: 1px solid #444;
-              background-color: #242424;
-              color: white;
-              font-size: 14px;
-              outline: none;
-            }
+          .logo-container {
+            width: 54px;
+            height: 54px;
+            margin: 0 auto 24px auto;
+          }
 
-            input:focus {
-              border-color: #2865de;
-            }
+          h2 {
+            font-size: 24px;
+            font-weight: 800;
+            margin: 0 0 10px 0;
+            letter-spacing: -0.5px;
+            color: #ffffff;
+          }
 
-            button {
-              width: 100%;
-              padding: 12px;
-              margin-top: 15px;
-              background-color: #2865de;
-              color: white;
-              border: none;
-              border-radius: 8px;
-              font-size: 15px;
-              font-weight: 600;
-              cursor: pointer;
-              transition: background-color 0.3s ease;
-            }
+          p {
+            color: #9ca3af;
+            font-size: 14px;
+            margin: 0 0 28px 0;
+            font-weight: 500;
+            line-height: 1.5;
+          }
 
-            button:hover {
-              background-color: #1f4fb8;
-            }
-          </style>
-        </head>
+          .form-group {
+            text-align: left;
+            margin-bottom: 24px;
+          }
 
-        <body>
-          <div class="container">
-            <h2>Reset Your Password</h2>
-            <p>Enter your new password below</p>
+          label {
+            display: block;
+            font-size: 10px;
+            font-weight: 700;
+            text-transform: uppercase;
+            letter-spacing: 0.8px;
+            color: #9ca3af;
+            margin-bottom: 8px;
+            margin-left: 4px;
+          }
 
-            <form method="POST" action="/api/auth/reset-password/${req.params.token}">
+          input {
+            width: 100%;
+            padding: 14px 16px;
+            background-color: rgba(0, 0, 0, 0.4);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            border-radius: 12px;
+            color: white;
+            font-size: 14px;
+            outline: none;
+            transition: all 0.3s ease;
+            box-sizing: border-box;
+          }
+
+          input:focus {
+            border-color: #6366f1;
+            box-shadow: 0 0 0 3px rgba(99, 102, 241, 0.2);
+            background-color: rgba(0, 0, 0, 0.5);
+          }
+
+          button {
+            width: 100%;
+            padding: 14px;
+            background: linear-gradient(to right, #6366f1, #7c3aed, #db2777);
+            color: white;
+            border: none;
+            border-radius: 12px;
+            font-size: 14px;
+            font-weight: 700;
+            cursor: pointer;
+            box-shadow: 0 4px 15px rgba(99, 102, 241, 0.3);
+            transition: all 0.3s ease;
+          }
+
+          button:hover {
+            opacity: 0.95;
+            transform: translateY(-1px);
+            box-shadow: 0 6px 20px rgba(99, 102, 241, 0.4);
+          }
+
+          button:active {
+            transform: translateY(0);
+          }
+        </style>
+      </head>
+      <body>
+        <div class="blob-1"></div>
+        <div class="blob-2"></div>
+        <div class="container">
+          <div class="logo-container">
+            <svg style="width: 100%; height: 100%;" viewBox="0 0 32 32" fill="none" xmlns="http://www.w3.org/2000/svg">
+              <defs>
+                <linearGradient id="face-top" x1="16" y1="3" x2="16" y2="16" gradientUnits="userSpaceOnUse">
+                  <stop offset="0%" stop-color="#818cf8" />
+                  <stop offset="100%" stop-color="#6366f1" />
+                </linearGradient>
+                <linearGradient id="face-left" x1="5" y1="16" x2="16" y2="29" gradientUnits="userSpaceOnUse">
+                  <stop offset="0%" stop-color="#a855f7" stop-opacity="0.85" />
+                  <stop offset="100%" stop-color="#7c3aed" stop-opacity="0.85" />
+                </linearGradient>
+                <linearGradient id="face-right" x1="16" y1="16" x2="27" y2="22.5" gradientUnits="userSpaceOnUse">
+                  <stop offset="0%" stop-color="#ec4899" stop-opacity="0.9" />
+                  <stop offset="100%" stop-color="#db2777" stop-opacity="0.9" />
+                </linearGradient>
+              </defs>
+              <g>
+                <path d="M16 3L27 9.5L16 16L5 9.5Z" fill="url(#face-top)" />
+                <path d="M5 9.5L16 16V29L5 22.5Z" fill="url(#face-left)" />
+                <path d="M27 9.5L16 16V29L27 22.5Z" fill="url(#face-right)" />
+                <path d="M16 3L27 9.5V22.5L16 29L5 22.5V9.5Z" stroke="#ffffff" stroke-width="1.2" stroke-linejoin="round" opacity="0.3" />
+                <path d="M16 16L5 9.5M16 16L27 9.5M16 16V29" stroke="#ffffff" stroke-width="1.2" stroke-linejoin="round" opacity="0.3" />
+              </g>
+            </svg>
+          </div>
+          <h2>Reset Your Password</h2>
+          <p>Enter your new password below</p>
+
+          <form method="POST" action="/api/auth/reset-password/${req.params.token}">
+            <div class="form-group">
+              <label for="password">New Password</label>
               <input 
                 type="password" 
                 name="password" 
+                id="password"
                 placeholder="Enter new password" 
                 required 
               />
-              <button type="submit">Reset Password</button>
-            </form>
-          </div>
-        </body>
+            </div>
+            <button type="submit">Reset Password</button>
+          </form>
+        </div>
+      </body>
       </html>
     `;
     res.send(html);
@@ -670,8 +816,42 @@ exports.resetPassword = async (req, res) => {
       resetPasswordExpires: { $gt: Date.now() }, // Check if token is still valid
     });
 
-    if (!user)
-      return res.status(400).json({ message: "Invalid or expired token" });
+    if (!user) {
+      return res.status(400).send(`
+        <!DOCTYPE html>
+        <html>
+        <head>
+          <meta charset="UTF-8">
+          <meta name="viewport" content="width=device-width, initial-scale=1.0">
+          <title>Invalid Token | CoCanvas</title>
+          <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+          <style>
+            body {
+              margin: 0; padding: 0; background-color: #0a0a0c;
+              font-family: 'Plus Jakarta Sans', sans-serif;
+              display: flex; justify-content: center; align-items: center; min-height: 100vh;
+              color: #ffffff; overflow: hidden; position: relative;
+            }
+            .blob-1 { position: absolute; top: -10%; left: -10%; width: 400px; height: 400px; background: rgba(99, 102, 241, 0.1); border-radius: 50%; filter: blur(100px); pointer-events: none; z-index: 0; }
+            .container {
+              background-color: rgba(18, 18, 20, 0.8); backdrop-filter: blur(20px); -webkit-backdrop-filter: blur(20px);
+              padding: 40px; border-radius: 24px; width: 90%; max-width: 400px;
+              border: 1px solid rgba(255, 255, 255, 0.08); text-align: center; z-index: 10;
+            }
+            h2 { color: #f43f5e; font-size: 22px; font-weight: 800; margin: 0 0 12px 0; }
+            p { color: #9ca3af; font-size: 14px; margin: 0; line-height: 1.5; }
+          </style>
+        </head>
+        <body>
+          <div class="blob-1"></div>
+          <div class="container">
+            <h2>Link Expired or Invalid ❌</h2>
+            <p>This password reset link is invalid or has expired. Please request a new one.</p>
+          </div>
+        </body>
+        </html>
+      `);
+    }
 
     user.password = req.body.password; // The pre-save hook in User.js will hash this
     user.resetPasswordToken = undefined;
@@ -682,61 +862,130 @@ exports.resetPassword = async (req, res) => {
       <!DOCTYPE html>
       <html>
       <head>
-        <title>Password Reset Successful</title>
+        <meta charset="UTF-8">
+        <meta name="viewport" content="width=device-width, initial-scale=1.0">
+        <title>Password Reset Successful | CoCanvas</title>
+        <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
         <style>
           body {
             margin: 0;
             padding: 0;
-            background-color: #171717;
-            font-family: Arial, sans-serif;
+            background-color: #0a0a0c;
+            font-family: 'Plus Jakarta Sans', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
             display: flex;
             justify-content: center;
             align-items: center;
-            height: 100vh;
+            min-height: 100vh;
+            color: #ffffff;
+            overflow: hidden;
+            position: relative;
+          }
+
+          /* Background Blur Blobs */
+          .blob-1 {
+            position: absolute;
+            top: -10%;
+            left: -10%;
+            width: 450px;
+            height: 450px;
+            background: rgba(99, 102, 241, 0.1);
+            border-radius: 50%;
+            filter: blur(120px);
+            pointer-events: none;
+            z-index: 0;
+          }
+
+          .blob-2 {
+            position: absolute;
+            bottom: -10%;
+            right: -10%;
+            width: 450px;
+            height: 450px;
+            background: rgba(236, 72, 153, 0.1);
+            border-radius: 50%;
+            filter: blur(120px);
+            pointer-events: none;
+            z-index: 0;
           }
 
           .container {
-            background-color: #1f1f1f;
-            padding: 40px;
-            border-radius: 16px;
-            width: 100%;
+            background-color: rgba(18, 18, 20, 0.8);
+            backdrop-filter: blur(20px);
+            -webkit-backdrop-filter: blur(20px);
+            padding: 45px 40px;
+            border-radius: 24px;
+            width: 90%;
             max-width: 400px;
+            border: 1px solid rgba(255, 255, 255, 0.08);
+            box-shadow: 0 25px 50px rgba(0, 0, 0, 0.6), 0 0 0 1px rgba(255, 255, 255, 0.03);
             text-align: center;
-            box-shadow: 0 10px 25px rgba(0, 0, 0, 0.5);
+            z-index: 10;
+            box-sizing: border-box;
+          }
+
+          .success-icon {
+            width: 64px;
+            height: 64px;
+            background-color: rgba(16, 185, 129, 0.1);
+            border: 1px solid rgba(16, 185, 129, 0.2);
+            border-radius: 20px;
+            color: #10b981;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            margin: 0 auto 24px auto;
           }
 
           h2 {
-            color: #4ade80;
-            margin-bottom: 20px;
+            font-size: 24px;
+            font-weight: 800;
+            margin: 0 0 12px 0;
+            letter-spacing: -0.5px;
+            color: #10b981;
           }
 
           p {
-            color: #ccc;
+            color: #9ca3af;
             font-size: 14px;
-            margin-bottom: 20px;
+            margin: 0 0 28px 0;
+            font-weight: 500;
+            line-height: 1.6;
           }
 
-          .button {
-            display: inline-block;
-            padding: 12px 20px;
-            background-color: #2865de;
+          .btn-login {
+            display: block;
+            width: 100%;
+            padding: 14px;
+            background: linear-gradient(to right, #6366f1, #7c3aed, #db2777);
             color: white;
-            border-radius: 8px;
             text-decoration: none;
-            font-weight: 600;
-            transition: background-color 0.3s ease;
+            border-radius: 12px;
+            font-size: 14px;
+            font-weight: 700;
+            box-shadow: 0 4px 15px rgba(99, 102, 241, 0.3);
+            transition: all 0.3s ease;
+            box-sizing: border-box;
           }
 
-          .button:hover {
-            background-color: #1f4fb8;
+          .btn-login:hover {
+            opacity: 0.95;
+            transform: translateY(-1px);
+            box-shadow: 0 6px 20px rgba(99, 102, 241, 0.4);
           }
         </style>
       </head>
       <body>
+        <div class="blob-1"></div>
+        <div class="blob-2"></div>
         <div class="container">
-          <h2>Password Reset Successful ✅</h2>
-          <p>Your password has been updated successfully.</p>
-          <p>You can now close this tab and log in with your new password.</p>
+          <div class="success-icon">
+            <svg xmlns="http://www.w3.org/2000/svg" width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+              <polyline points="20 6 9 17 4 12"></polyline>
+            </svg>
+          </div>
+          <h2>Password Reset Successful</h2>
+          <p>Your password has been updated successfully. You can now close this tab or return to the login page.</p>
+          <a href="${FRONTEND_URL}/login" class="btn-login">Go to Login</a>
         </div>
       </body>
       </html>

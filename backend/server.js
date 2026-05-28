@@ -107,6 +107,10 @@ io.on("connection", (socket) => {
   console.log("User connected:", socket.id);
 
   socket.on("register-user", (userId) => {
+    // Notify all existing socket connections in this user's room to force logout
+    socket.to("user_room_" + userId).emit("force-logout", {
+      message: "You have been logged out because your account was logged in on another device."
+    });
     socket.join("user_room_" + userId);
     console.log("User " + userId + " registered to room");
   });

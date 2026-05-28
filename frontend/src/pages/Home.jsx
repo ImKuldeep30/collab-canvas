@@ -81,6 +81,16 @@ export default function Home() {
       });
     }
 
+    newSocket.on("force-logout", (data) => {
+      showAlert("Logged Out", data.message || "You have been logged out because your account was logged in on another device.");
+      localStorage.removeItem("accessToken");
+      localStorage.removeItem("refreshToken");
+      localStorage.removeItem("user");
+      sessionStorage.removeItem("activeSessionId");
+      sessionStorage.removeItem("activeSessionIsAdmin");
+      sessionStorage.removeItem("activeSessionTeamInfo");
+    });
+
     newSocket.on("team-session-started", (data) => {
       // Don't notify the socket connection that started it
       if (newSocket.id !== data.adminSocketId) {
@@ -174,6 +184,8 @@ export default function Home() {
     });
 
     return () => {
+      newSocket.off("register-user");
+      newSocket.off("force-logout");
       newSocket.off("team-session-started");
       newSocket.off("kicked");
       newSocket.off("session-terminated");
@@ -462,6 +474,8 @@ export default function Home() {
           setAlertConfig({ ...alertConfig, isOpen: false });
           if (alertConfig.title === "Session Ended") {
             window.location.reload();
+          } else if (alertConfig.title === "Logged Out") {
+            window.location.href = "/login";
           }
         }} 
       />
