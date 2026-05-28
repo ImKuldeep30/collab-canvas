@@ -8,39 +8,67 @@ const resend = new Resend(process.env.RESEND_API_KEY);
 
 // front-end url for redirects; set via env or default to localhost:5173 (Vite)
 const FRONTEND_URL = process.env.FRONTEND_URL || "http://localhost:5173";
+const BACKEND_URL = process.env.BACKEND_URL || "http://localhost:3000";
 
 const getVerificationEmailTemplate = (name, url) => `
-  <div style="background-color: #0a0a0c; padding: 45px 15px; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; text-align: center; color: #ffffff;">
-    <table align="center" border="0" cellpadding="0" cellspacing="0" width="100%" style="max-width: 480px; background-color: #121214; border: 1px solid rgba(255, 255, 255, 0.08); border-radius: 20px; overflow: hidden; box-shadow: 0 20px 40px rgba(0,0,0,0.5);">
+  <div style="background-color: #0a0a0c; background-image: radial-gradient(circle at 20% 20%, rgba(99, 102, 241, 0.15) 0%, rgba(10, 10, 12, 0) 55%), radial-gradient(circle at 80% 80%, rgba(236, 72, 153, 0.15) 0%, rgba(10, 10, 12, 0) 55%); padding: 60px 15px; font-family: 'Plus Jakarta Sans', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; text-align: center; color: #ffffff;">
+    <table align="center" border="0" cellpadding="0" cellspacing="0" width="100%" style="max-width: 480px; background-color: rgba(18, 18, 20, 0.75); border: 1px solid rgba(255, 255, 255, 0.08); border-radius: 24px; overflow: hidden; box-shadow: 0 20px 40px rgba(0,0,0,0.5); backdrop-filter: blur(20px); -webkit-backdrop-filter: blur(20px);">
       <tr>
-        <td style="padding: 40px 32px; text-align: center;">
+        <td style="padding: 45px 36px; text-align: center;">
           
-          <!-- CoCanvas Styled Brand Icon -->
+          <!-- CoCanvas 3D Isometric Brand Icon -->
           <div style="margin-bottom: 24px; display: inline-block;">
             <table align="center" border="0" cellpadding="0" cellspacing="0">
               <tr>
-                <td style="background: linear-gradient(135deg, #6366f1 0%, #a855f7 100%); width: 50px; height: 50px; border-radius: 14px; text-align: center; vertical-align: middle; color: #ffffff; font-weight: 900; font-size: 22px; box-shadow: 0 4px 12px rgba(99,102,241,0.3);">
-                  C
+                <td style="width: 60px; height: 60px; text-align: center; vertical-align: middle;">
+                  <svg width="60" height="60" viewBox="0 0 32 32" fill="none" xmlns="http://www.w3.org/2000/svg">
+                    <defs>
+                      <linearGradient id="face-top-mail" x1="16" y1="3" x2="16" y2="16" gradientUnits="userSpaceOnUse">
+                        <stop offset="0%" stop-color="#818cf8" />
+                        <stop offset="100%" stop-color="#6366f1" />
+                      </linearGradient>
+                      <linearGradient id="face-left-mail" x1="5" y1="16" x2="16" y2="29" gradientUnits="userSpaceOnUse">
+                        <stop offset="0%" stop-color="#a855f7" stop-opacity="0.85" />
+                        <stop offset="100%" stop-color="#7c3aed" stop-opacity="0.85" />
+                      </linearGradient>
+                      <linearGradient id="face-right-mail" x1="16" y1="16" x2="27" y2="22.5" gradientUnits="userSpaceOnUse">
+                        <stop offset="0%" stop-color="#ec4899" stop-opacity="0.9" />
+                        <stop offset="100%" stop-color="#db2777" stop-opacity="0.9" />
+                      </linearGradient>
+                    </defs>
+                    <g>
+                      <!-- Top Face -->
+                      <path d="M16 3L27 9.5L16 16L5 9.5Z" fill="url(#face-top-mail)" />
+                      <!-- Left Face -->
+                      <path d="M5 9.5L16 16V29L5 22.5Z" fill="url(#face-left-mail)" />
+                      <!-- Right Face -->
+                      <path d="M27 9.5L16 16V29L27 22.5Z" fill="url(#face-right-mail)" />
+                      
+                      <!-- Grid outlines -->
+                      <path d="M16 3L27 9.5V22.5L16 29L5 22.5V9.5Z" stroke="#ffffff" stroke-width="1.2" stroke-linejoin="round" opacity="0.3" />
+                      <path d="M16 16L5 9.5M16 16L27 9.5M16 16V29" stroke="#ffffff" stroke-width="1.2" stroke-linejoin="round" opacity="0.3" />
+                    </g>
+                  </svg>
                 </td>
               </tr>
             </table>
           </div>
           
-          <h2 style="color: #ffffff; font-size: 22px; font-weight: 800; margin: 0 0 8px 0; letter-spacing: -0.5px;">Welcome to CoCanvas!</h2>
-          <p style="color: #818cf8; font-size: 14px; font-weight: 700; margin: 0 0 24px 0;">Hello ${name},</p>
+          <h2 style="color: #ffffff; font-size: 24px; font-weight: 800; margin: 0 0 12px 0; letter-spacing: -0.5px;">Welcome to CoCanvas!</h2>
+          <p style="color: #818cf8; font-size: 15px; font-weight: 700; margin: 0 0 24px 0;">Hello ${name},</p>
           
           <p style="color: #9ca3af; font-size: 13px; line-height: 1.6; margin: 0 0 28px 0; font-weight: 500;">
             We're thrilled to have you join our real-time visual collaboration workspace! Sketch workflows, brainstorm systems, and interact instantly with your team on persistent whiteboard spaces.
           </p>
           
           <p style="color: #ffffff; font-size: 13px; line-height: 1.6; margin: 0 0 28px 0; font-weight: 500;">
-            Please verify your email address to active your CoCanvas account:
+            Please verify your email address to activate your CoCanvas account:
           </p>
           
           <table align="center" border="0" cellpadding="0" cellspacing="0" style="margin: 0 auto 28px auto;">
             <tr>
               <td align="center">
-                <a href="${url}" target="_blank" style="font-size: 13px; color: #ffffff; text-decoration: none; border-radius: 12px; padding: 14px 28px; display: inline-block; font-weight: 700; background: linear-gradient(to right, #6366f1, #7c3aed); box-shadow: 0 4px 15px rgba(99, 102, 241, 0.3);">
+                <a href="${url}" target="_blank" style="font-size: 13px; color: #ffffff; text-decoration: none; border-radius: 14px; padding: 14px 32px; display: inline-block; font-weight: 700; background-color: #6366f1; background-image: linear-gradient(to right, #6366f1, #7c3aed); box-shadow: 0 4px 15px rgba(99, 102, 241, 0.35);">
                   Verify Email Address
                 </a>
               </td>
@@ -61,24 +89,51 @@ const getVerificationEmailTemplate = (name, url) => `
 `;
 
 const getForgotPasswordEmailTemplate = (name, url) => `
-  <div style="background-color: #0a0a0c; padding: 45px 15px; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; text-align: center; color: #ffffff;">
-    <table align="center" border="0" cellpadding="0" cellspacing="0" width="100%" style="max-width: 480px; background-color: #121214; border: 1px solid rgba(255, 255, 255, 0.08); border-radius: 20px; overflow: hidden; box-shadow: 0 20px 40px rgba(0,0,0,0.5);">
+  <div style="background-color: #0a0a0c; background-image: radial-gradient(circle at 20% 20%, rgba(99, 102, 241, 0.15) 0%, rgba(10, 10, 12, 0) 55%), radial-gradient(circle at 80% 80%, rgba(236, 72, 153, 0.15) 0%, rgba(10, 10, 12, 0) 55%); padding: 60px 15px; font-family: 'Plus Jakarta Sans', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; text-align: center; color: #ffffff;">
+    <table align="center" border="0" cellpadding="0" cellspacing="0" width="100%" style="max-width: 480px; background-color: rgba(18, 18, 20, 0.75); border: 1px solid rgba(255, 255, 255, 0.08); border-radius: 24px; overflow: hidden; box-shadow: 0 20px 40px rgba(0,0,0,0.5); backdrop-filter: blur(20px); -webkit-backdrop-filter: blur(20px);">
       <tr>
-        <td style="padding: 40px 32px; text-align: center;">
+        <td style="padding: 45px 36px; text-align: center;">
           
-          <!-- CoCanvas Styled Brand Icon -->
+          <!-- CoCanvas 3D Isometric Brand Icon -->
           <div style="margin-bottom: 24px; display: inline-block;">
             <table align="center" border="0" cellpadding="0" cellspacing="0">
               <tr>
-                <td style="background: linear-gradient(135deg, #6366f1 0%, #a855f7 100%); width: 50px; height: 50px; border-radius: 14px; text-align: center; vertical-align: middle; color: #ffffff; font-weight: 900; font-size: 22px; box-shadow: 0 4px 12px rgba(99,102,241,0.3);">
-                  C
+                <td style="width: 60px; height: 60px; text-align: center; vertical-align: middle;">
+                  <svg width="60" height="60" viewBox="0 0 32 32" fill="none" xmlns="http://www.w3.org/2000/svg">
+                    <defs>
+                      <linearGradient id="face-top-reset" x1="16" y1="3" x2="16" y2="16" gradientUnits="userSpaceOnUse">
+                        <stop offset="0%" stop-color="#818cf8" />
+                        <stop offset="100%" stop-color="#6366f1" />
+                      </linearGradient>
+                      <linearGradient id="face-left-reset" x1="5" y1="16" x2="16" y2="29" gradientUnits="userSpaceOnUse">
+                        <stop offset="0%" stop-color="#a855f7" stop-opacity="0.85" />
+                        <stop offset="100%" stop-color="#7c3aed" stop-opacity="0.85" />
+                      </linearGradient>
+                      <linearGradient id="face-right-reset" x1="16" y1="16" x2="27" y2="22.5" gradientUnits="userSpaceOnUse">
+                        <stop offset="0%" stop-color="#ec4899" stop-opacity="0.9" />
+                        <stop offset="100%" stop-color="#db2777" stop-opacity="0.9" />
+                      </linearGradient>
+                    </defs>
+                    <g>
+                      <!-- Top Face -->
+                      <path d="M16 3L27 9.5L16 16L5 9.5Z" fill="url(#face-top-reset)" />
+                      <!-- Left Face -->
+                      <path d="M5 9.5L16 16V29L5 22.5Z" fill="url(#face-left-reset)" />
+                      <!-- Right Face -->
+                      <path d="M27 9.5L16 16V29L27 22.5Z" fill="url(#face-right-reset)" />
+                      
+                      <!-- Grid outlines -->
+                      <path d="M16 3L27 9.5V22.5L16 29L5 22.5V9.5Z" stroke="#ffffff" stroke-width="1.2" stroke-linejoin="round" opacity="0.3" />
+                      <path d="M16 16L5 9.5M16 16L27 9.5M16 16V29" stroke="#ffffff" stroke-width="1.2" stroke-linejoin="round" opacity="0.3" />
+                    </g>
+                  </svg>
                 </td>
               </tr>
             </table>
           </div>
           
-          <h2 style="color: #ffffff; font-size: 22px; font-weight: 800; margin: 0 0 8px 0; letter-spacing: -0.5px;">Password Reset Request</h2>
-          <p style="color: #818cf8; font-size: 14px; font-weight: 700; margin: 0 0 24px 0;">Hello ${name},</p>
+          <h2 style="color: #ffffff; font-size: 24px; font-weight: 800; margin: 0 0 12px 0; letter-spacing: -0.5px;">Password Reset Request</h2>
+          <p style="color: #818cf8; font-size: 15px; font-weight: 700; margin: 0 0 24px 0;">Hello ${name},</p>
           
           <p style="color: #9ca3af; font-size: 13px; line-height: 1.6; margin: 0 0 28px 0; font-weight: 500;">
             We received a request to reset the password for your CoCanvas account. No problem, we've got you covered!
@@ -91,7 +146,7 @@ const getForgotPasswordEmailTemplate = (name, url) => `
           <table align="center" border="0" cellpadding="0" cellspacing="0" style="margin: 0 auto 28px auto;">
             <tr>
               <td align="center">
-                <a href="${url}" target="_blank" style="font-size: 13px; color: #ffffff; text-decoration: none; border-radius: 12px; padding: 14px 28px; display: inline-block; font-weight: 700; background: linear-gradient(to right, #6366f1, #7c3aed); box-shadow: 0 4px 15px rgba(99, 102, 241, 0.3);">
+                <a href="${url}" target="_blank" style="font-size: 13px; color: #ffffff; text-decoration: none; border-radius: 14px; padding: 14px 32px; display: inline-block; font-weight: 700; background-color: #6366f1; background-image: linear-gradient(to right, #6366f1, #7c3aed); box-shadow: 0 4px 15px rgba(99, 102, 241, 0.35);">
                   Reset Password
                 </a>
               </td>
@@ -189,7 +244,7 @@ exports.signup = async (req, res) => {
     await user.save();
 
     // Send verification email
-    const url = `http://localhost:3000/api/auth/verify-email/${verificationToken}`;
+    const url = `${BACKEND_URL}/api/auth/verify-email/${verificationToken}`;
     await resend.emails.send({
       from: process.env.EMAIL_FROM || "CoCanvas <onboarding@resend.dev>",
       to: user.email,
@@ -537,7 +592,7 @@ exports.forgotPassword = async (req, res) => {
     user.resetPasswordExpires = Date.now() + 3600000; // 1 hour from now
     await user.save();
 
-    const url = `http://localhost:3000/api/auth/reset-password/${resetToken}`;
+    const url = `${BACKEND_URL}/api/auth/reset-password/${resetToken}`;
     await resend.emails.send({
       from: process.env.EMAIL_FROM || "CoCanvas <onboarding@resend.dev>",
       to: user.email,
